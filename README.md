@@ -1,171 +1,94 @@
-# flutter_ota
+# OTA Package for ESP32 Firmware Updates
 
-The `flutter_ota` package provides a convenient and straightforward way to perform over-the-air (OTA) firmware updates for ESP32 devices via Bluetooth Low Energy (BLE). This package allows you to wirelessly update the firmware of ESP32 devices, eliminating the need for physical connections.
+The OTA Package is a Flutter library that provides functionality to update ESP32 firmware over-the-air (OTA) using Bluetooth Low Energy (BLE) communication. This package is particularly useful when you want to remotely update the firmware of an ESP32 device without requiring physical access to it.
 
-## Features
+## Installation
 
-- Establish a Bluetooth Low Energy (BLE) connection with an ESP32 device.
-- Request and set the Maximum Transmission Unit (MTU) size for optimized data transfer.
-- Perform firmware updates by sending binary data to the ESP32 device in chunks.
-- Monitor the OTA update process and receive progress updates.
-
-## Getting Started
-
-To use the `flutter_ota` package in your Flutter project, follow these steps:
-
-1. Add the package to your `pubspec.yaml` file:
+To use the OTA Package in your Flutter project, add the following dependency to your `pubspec.yaml` file:
 
 ```yaml
 dependencies:
-  flutter_ota: ^x.x.x # Replace 'x.x.x' with the latest version from pub.dev
+  flutter_blue_plus: ^{latest_version}  # Replace {latest_version} with the latest version of the flutter_blue_plus package
 ```
 
-2. Run `flutter pub get` to fetch the package.
-
-3. Import the package in your Dart code:
-
-```dart
-import 'package:flutter_ota/flutter_ota.dart';
-```
+Please note that the OTA Package relies on the `flutter_blue_plus` package for Bluetooth communication. Make sure to check for the latest version of `flutter_blue_plus` on [pub.dev](https://pub.dev/packages/flutter_blue_plus).
 
 ## Usage
 
-### 1. Establish a Bluetooth Connection
+To perform a firmware update on your ESP32 device using the OTA Package, follow these steps:
 
-The first step is to establish a Bluetooth Low Energy connection with the ESP32 device:
-
-```dart
-final FlutterOta flutterOta = FlutterOta();
-final BluetoothDevice device = ...; // Get the BluetoothDevice instance of your ESP32
-
-await flutterOta.connectToDevice(device);
-```
-
-### 2. Request and Set MTU Size
-
-You can request and set the Maximum Transmission Unit (MTU) size for optimized data transfer:
+1. Import the required packages and classes:
 
 ```dart
-final int mtuSize = 300; // Set the desired MTU size
-await flutterOta.requestMtu(device, mtuSize);
+import 'dart:typed_data';
+import 'package:flutter/services.dart';
+import 'package:flutter_blue_plus/flutter_blue_plus.dart';
+import 'package:ota_package/data/ble_repository.dart';
+import 'package:ota_package/ota_package.dart';
 ```
 
-### 3. Perform OTA Firmware Update
-
-To perform the OTA firmware update, you need to send binary data in chunks to the ESP32 device:
+2. Create an instance of the `Esp32OtaPackage` class, providing the required `BluetoothCharacteristic` objects for data transfer and control:
 
 ```dart
-// Read binary data from a file or source
-final List<Uint8List> binaryChunks = ...; // Read binary data in chunks
+BluetoothCharacteristic dataCharacteristic; // Replace with your actual data characteristic
+BluetoothCharacteristic controlCharacteristic; // Replace with your actual control characteristic
 
-for (int packageNumber = 0; packageNumber < binaryChunks.length; packageNumber++) {
-  final Uint8List chunk = binaryChunks[packageNumber];
-
-  // Send the chunk to the ESP32 device
-  await flutterOta.sendFirmwareChunk(chunk);
-
-  // Update the progress (optional)
-  final double progress = (packageNumber + 1) / binaryChunks.length;
-  print('OTA Update Progress: ${(progress * 100).toStringAsFixed(2)}%');
-}
+Esp32OtaPackage otaPackage = Esp32OtaPackage(dataCharacteristic, controlCharacteristic);
 ```
 
-### 4. Monitor OTA Update Status
-
-You can listen to the OTA update status to get notifications on completion:
+3. Call the `updateFirmware` method with the path to your firmware BIN file and the `BluetoothDevice` object representing your ESP32 device:
 
 ```dart
-flutterOta.onUpdateComplete.listen((success) {
-  if (success) {
-    print('OTA Update Completed Successfully!');
-  } else {
-    print('OTA Update Failed.');
-  }
-});
+final String binFilePath = "path/to/your/firmware.bin"; // Replace with the path to your firmware BIN file
+BluetoothDevice device; // Replace with your actual BluetoothDevice instance
+
+await otaPackage.updateFirmware(binFilePath, device);
 ```
 
-### 5. Disconnect from Device
-
-After the OTA update is complete or in case of an error, make sure to disconnect from the ESP32 device:
-
-```dart
-await flutterOta.disconnectFromDevice();
-```
+**Note**: Before calling the `updateFirmware` method, make sure you have successfully connected to your ESP32 device using the `flutter_blue_plus` package.
 
 ## Example
 
+Here's an example of how to perform a firmware update using the OTA Package:
+
 ```dart
-import 'package:flutter/material.dart';
-import 'package:flutter_ota/flutter_ota.dart';
-import 'package:flutter_blue/flutter_blue.dart';
+import 'dart:typed_data';
+import 'package:flutter/services.dart';
+import 'package:flutter_blue_plus/flutter_blue_plus.dart';
+import 'package:ota_package/data/ble_repository.dart';
+import 'package:ota_package/ota_package.dart';
 
-void main() {
-  runApp(MyApp());
-}
+void main() async {
+  final String deviceId = "ESP32_DEVICE_ID"; // Replace with your ESP32 device ID
+  final String binFilePath = "path/to/your/firmware.bin"; // Replace with the path to your firmware BIN file
 
-class MyApp extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'OTA Update Demo',
-      home: MyHomePage(),
-    );
-  }
-}
+  // Create a BluetoothDevice object from the deviceId
+  BluetoothDevice device = await FlutterBlue.instance
+      .scan(timeout: Duration(seconds: 4), scanMode: ScanMode.balanced)
+      .where((scanResult) => scanResult.device.id.id == deviceId)
+      .map((scanResult) => scanResult.device)
+      .first;
 
-class MyHomePage extends StatelessWidget {
-  final FlutterOta flutterOta = FlutterOta();
-  final BluetoothDevice device = ...; // Replace with your ESP32 device
+  // Get the dataCharacteristic and controlCharacteristic from the BluetoothDevice
+  BluetoothService service = await device.discoverServices()
+      .then((services) => services.firstWhere((service) => service.uuid.toString() == "SERVICE_UUID"));
+  BluetoothCharacteristic dataCharacteristic = service.characteristics.firstWhere((characteristic) => characteristic.uuid.toString() == "DATA_CHARACTERISTIC_UUID");
+  BluetoothCharacteristic controlCharacteristic = service.characteristics.firstWhere((characteristic) => characteristic.uuid.toString() == "CONTROL_CHARACTERISTIC_UUID");
 
-  @override
- 
+  // Create an object of Esp32OtaPackage and call the update
 
- Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('OTA Update Demo'),
-      ),
-      body: Center(
-        child: ElevatedButton(
-          onPressed: () async {
-            try {
-              await flutterOta.connectToDevice(device);
-              await flutterOta.requestMtu(device, 300);
-
-              final List<Uint8List> binaryChunks = ...; // Replace with your binary data
-              for (int packageNumber = 0; packageNumber < binaryChunks.length; packageNumber++) {
-                final Uint8List chunk = binaryChunks[packageNumber];
-                await flutterOta.sendFirmwareChunk(chunk);
-                final double progress = (packageNumber + 1) / binaryChunks.length;
-                print('OTA Update Progress: ${(progress * 100).toStringAsFixed(2)}%');
-              }
-
-              flutterOta.onUpdateComplete.listen((success) {
-                if (success) {
-                  print('OTA Update Completed Successfully!');
-                } else {
-                  print('OTA Update Failed.');
-                }
-              });
-
-              await flutterOta.disconnectFromDevice();
-            } catch (e) {
-              print('Error during OTA update: $e');
-            }
-          },
-          child: Text('Start OTA Update'),
-        ),
-      ),
-    );
-  }
+Firmware method
+  Esp32OtaPackage otaPackage = Esp32OtaPackage(dataCharacteristic, controlCharacteristic);
+  await otaPackage.updateFirmware(binFilePath, device);
 }
 ```
 
-## Notes
+Make sure to replace `"ESP32_DEVICE_ID"`, `"path/to/your/firmware.bin"`, `"SERVICE_UUID"`, and `"CONTROL_CHARACTERISTIC_UUID"` with the actual values for your ESP32 device and characteristics UUIDs.
 
-- Make sure your ESP32 device is compatible with OTA updates via Bluetooth Low Energy (BLE).
-- Always handle errors and disconnections appropriately to provide a smooth user experience.
+## Contribution
 
-## Conclusion
+Contributions to this project are welcome! If you find any issues or have suggestions for improvements, feel free to open an issue or submit a pull request.
 
-The `flutter_ota` package simplifies the process of performing over-the-air (OTA) firmware updates for ESP32 devices using Bluetooth Low Energy (BLE). You can now wirelessly update the firmware of your ESP32 devices with ease. If you encounter any issues or have suggestions for improvement, feel free to report them on the [GitHub repository](https://github.com/example/flutter_ota). Happy updating!
+## License
+
+The OTA Package is released under the [MIT License](LICENSE). Feel free to use it in your own projects.
