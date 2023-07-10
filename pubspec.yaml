@@ -15,6 +15,9 @@ dependencies:
   flutter_blue_plus: ^1.5.2
   permission_handler: ^10.3.0
   path_provider: ^2.0.15
+  file_picker: ^5.3.2
+  mockito: ^5.4.2
+  path: ^1.8.3
 
 dev_dependencies:
   flutter_test:
