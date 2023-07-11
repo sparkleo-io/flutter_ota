@@ -456,6 +456,7 @@ Future<List<Uint8List>> _getFirmwareFromPicker(int mtuSize) async {
   }
 }
 
+
 }
 
   
