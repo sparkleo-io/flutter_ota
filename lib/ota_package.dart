@@ -203,18 +203,16 @@ Future<List<Uint8List>> getFirmware(int firmwareType, int mtuSize) {
 //ota_package.dart
 import 'dart:io';
 import 'dart:typed_data';
-import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'package:file_picker/file_picker.dart';
 
 
-abstract class OtaPackage {
-  //Future<List<BluetoothDevice>> scanForDevices();
-  Future<void> updateFirmware(BluetoothDevice device, int firmwareType,{String? binFilePath});
 
-  //Future <void> connectToDevice(BluetoothDevice device);
+
+abstract class OtaPackage {
   
+  Future<void> updateFirmware(BluetoothDevice device, int firmwareType,BluetoothService service, BluetoothCharacteristic dataUUID, BluetoothCharacteristic controlUUID,{String? binFilePath}); 
   bool Firmwareupdate = false;
 
 }
@@ -230,21 +228,10 @@ class BleRepository {
     return await characteristic.read();
   }
 
-  Stream<List<BluetoothDevice>> scanDevices() {
-    return flutterBlue.scanResults.map((results) => results.map((result) => result.device).toList());
-  }
-
-  Future<void> connectToDevice(BluetoothDevice device) async {
-    await device.connect();
-  }
-
   Future<void> requestMtu(BluetoothDevice device, int mtuSize) async {
     await device.requestMtu(mtuSize);
   }
 
-  Future<List<BluetoothService>> discoverServices(BluetoothDevice device) async {
-    return await device.discoverServices();
-  }
 }
 
 class Esp32OtaPackage implements OtaPackage {
@@ -255,6 +242,7 @@ class Esp32OtaPackage implements OtaPackage {
   Esp32OtaPackage(this.dataCharacteristic, this.controlCharacteristic);
 
   @override
+  /*
 Future<void> updateFirmware(BluetoothDevice device, int firmwareType, {String? binFilePath})  async {
    
   final bleRepo = BleRepository();
@@ -266,30 +254,44 @@ Future<void> updateFirmware(BluetoothDevice device, int firmwareType, {String? b
   byteList[1] = (mtuSize >> 8) & 0xFF;
 
  
-  await bleRepo.writeDataCharacteristic(dataCharacteristic, byteList);
+  
  
-  // Write x01 to the controlCharacteristic and check if it returns value of 0x02
-  await bleRepo.writeDataCharacteristic(controlCharacteristic, Uint8List.fromList([1]));
-   print('Inside update firmware , af write char char ');
-  List<int> value = await bleRepo.readCharacteristic(controlCharacteristic);
-  print('value returned is this ------- ${value[0]}');
 
   // Get the firmware chunks
   List<Uint8List> binaryChunks;
 if (firmwareType == 1 && binFilePath != null && binFilePath.isNotEmpty) {
   binaryChunks = await getFirmware(firmwareType, mtuSize, binFilePath: binFilePath);
+  
 } else if (firmwareType == 2) {
   binaryChunks = await _getFirmwareFromPicker(mtuSize);
-} else {
-  binaryChunks = await getFirmware(firmwareType, mtuSize);
+} else { 
+  binaryChunks = [];
 }
+print("After selection of firmware type");
+ // Write x01 to the controlCharacteristic and check if it returns value of 0x02
+  await bleRepo.writeDataCharacteristic(dataCharacteristic, byteList);
+// need to change this tomorrow
+  await bleRepo.writeDataCharacteristic(controlCharacteristic, Uint8List.fromList([1]));
+   print('Inside update firmware , af write char char ');
+  List<int> value = await bleRepo.readCharacteristic(controlCharacteristic);
+  print('value returned is this ------- ${value[0]}');
+  
+
   print('this is length of binary chunks ----- ${binaryChunks.length}');
   int packageNumber = 0;
   for (Uint8List chunk in binaryChunks) {
     await bleRepo.writeDataCharacteristic(dataCharacteristic, chunk);
     packageNumber++;
-    print('writing package number ${packageNumber} of ${binaryChunks.length} to ESP32');
+
+    double progress = (packageNumber / binaryChunks.length) * 100;
+    int roundedProgress = progress.round(); // Rounded off progress value
+    print('Writing package number $packageNumber of ${binaryChunks.length} to ESP32');
+    print('Progress: $roundedProgress%');
   }
+   
+   
+
+
 
   // Write x04 to the controlCharacteristic to finish the update process
   await bleRepo.writeDataCharacteristic(controlCharacteristic, Uint8List.fromList([4]));
@@ -303,78 +305,47 @@ if (firmwareType == 1 && binFilePath != null && binFilePath.isNotEmpty) {
     print('OTA update failed');
     Firmwareupdate = false; // Firmware update failed
   }
-}
+}*/
 
-
-/*
-class Esp32OtaPackage extends OtaPackage{
-  final BluetoothCharacteristic dataCharacteristic;
-  final BluetoothCharacteristic controlCharacteristic;
-  bool Firmwareupdate = false;
-
-  Esp32OtaPackage(this.dataCharacteristic, this.controlCharacteristic);
-
-
-
-  Future<List<Uint8List>> getFirmware(int firmwareType, int mtuSize) {
-    if (firmwareType == 2) {
-    // Prompt the user to select the firmware BIN file using file picker
-    return _getFirmwareFromPicker(mtuSize);
-  } else if (firmwareType == 1) {
-    // Provide the absolute file path for the firmware BIN file
-    String binFilePath = '/path/to/firmware.bin';
-    return _readBinaryFile(binFilePath, mtuSize);
-  } else {
-    // If the firmwareType is neither 1 nor 2, return an empty list.
-     return Future.value([]);
-  }
-  }
-
-  @override
-  Future<void> updateFirmware(BluetoothDevice device, int firmwareType) async {
-  print('value returned is this -------');
+Future<void> updateFirmware(BluetoothDevice device, int firmwareType, BluetoothService service,BluetoothCharacteristic dataUUID, BluetoothCharacteristiccontrolUUID, {String? binFilePath}) async {
   final bleRepo = BleRepository();
 
-    // Write packet size data on the dataCharacteristic
-    int mtuSize = await device.mtu.first;
-    Uint8List byteList = Uint8List(2);
-    byteList[0] = mtuSize & 0xFF;
-    byteList[1] = (mtuSize >> 8) & 0xFF;
-    await bleRepo.writeDataCharacteristic(dataCharacteristic, byteList);
+  // Write packet size data on the dataCharacteristic
+  int mtuSize = await device.mtu.first;
+  Uint8List byteList = Uint8List(2);
+  byteList[0] = mtuSize & 0xFF;
+  byteList[1] = (mtuSize >> 8) & 0xFF;
+
+  // Get the firmware chunks
+  List<Uint8List> binaryChunks;
+  if (firmwareType == 1 && binFilePath != null && binFilePath.isNotEmpty) {
+    binaryChunks = await getFirmware(firmwareType, mtuSize, binFilePath: binFilePath);
+  } else if (firmwareType == 2) {
+    binaryChunks = await _getFirmwareFromPicker(mtuSize);
+  } else {
+    binaryChunks = [];
+  }
+  print("After selection of firmware type");
+  
 
     // Write x01 to the controlCharacteristic and check if it returns value of 0x02
+    await bleRepo.writeDataCharacteristic(dataCharacteristic, byteList);
     await bleRepo.writeDataCharacteristic(controlCharacteristic, Uint8List.fromList([1]));
+    print('Inside update firmware, after writing characteristic');
+
     List<int> value = await bleRepo.readCharacteristic(controlCharacteristic);
-    print('value returned is this ------- ${value[0]}');
+    print('Value returned is: ${value[0]}');
 
+    print('This is the length of binary chunks: ${binaryChunks.length}');
+    int packageNumber = 0;
+    for (Uint8List chunk in binaryChunks) {
+      await bleRepo.writeDataCharacteristic(dataCharacteristic, chunk);
+      packageNumber++;
 
-
-// Func 
-Future<List<Uint8List>> getFirmware(int firmwareType, int mtuSize) {
-    if (firmwareType == 2) {
-    // Prompt the user to select the firmware BIN file using file picker
-    return _getFirmwareFromPicker(mtuSize);
-  } else if (firmwareType == 1) {
-    // Provide the absolute file path for the firmware BIN file
-    String binFilePath = '/path/to/firmware.bin';
-    return _readBinaryFile(binFilePath, mtuSize);
-  } else {
-    // If the firmwareType is neither 1 nor 2, return an empty list.
-     return Future.value([]);
-  }
-  }
-
-    // Check if controlCharacteristic reads 0x02
-    if (value[0] == 2) {
-      // Get the firmware chunks
-      List<Uint8List> binaryChunks = await getFirmware(firmwareType, mtuSize);
-      print('this is length of binary chunks ----- ${binaryChunks.length}');
-      int packageNumber = 0;
-      for (Uint8List chunk in binaryChunks) {
-        await bleRepo.writeDataCharacteristic(dataCharacteristic, chunk);
-        packageNumber++;
-        print('writing package number ${packageNumber} of ${binaryChunks.length} to ESP32');
-      }
+      double progress = (packageNumber / binaryChunks.length) * 100;
+      int roundedProgress = progress.round(); // Rounded off progress value
+      print('Writing package number $packageNumber of ${binaryChunks.length} to ESP32');
+      print('Progress: $roundedProgress%');
     }
 
     // Write x04 to the controlCharacteristic to finish the update process
@@ -390,21 +361,12 @@ Future<List<Uint8List>> getFirmware(int firmwareType, int mtuSize) {
       Firmwareupdate = false; // Firmware update failed
     }
   } 
-}*/
+}
 
-/*  Future<List<Uint8List>> _readBinaryFile(String binFilePath, int mtuSize) async {
-      print('Inside readBinaryFile , bf load ');
-     final fileData = await rootBundle.load(binFilePath);
-      print('Inside readBinaryFile , af load ');
-    final bytes = fileData.buffer.asUint8List();
-    final chunkSize = mtuSize;
-    List<Uint8List> chunks = [];
-    for (int i = 0; i < bytes.length; i += chunkSize) {
-      int end = (i + chunkSize < bytes.length) ? i + chunkSize : bytes.length;
-      chunks.add(Uint8List.fromList(bytes.sublist(i, end)));
-    }
-    return chunks;
-  }*/
+
+  
+
+
 
 List<int> uint8ListToIntList(Uint8List uint8List) {
   return uint8List.toList();
@@ -439,25 +401,61 @@ Future<List<Uint8List>> getFirmware(int firmwareType, int mtuSize, {String? binF
   }
 }
 
-
 Future<List<Uint8List>> _getFirmwareFromPicker(int mtuSize) async {
-  // Prompt the user to select the firmware BIN file
-  FilePickerResult? result = await FilePicker.platform.pickFiles(type: FileType.any);
+  final result = await FilePicker.platform.pickFiles();
 
-  if (result != null && result.files.isNotEmpty) {
-    PlatformFile file = result.files.first;
-    String binFilePath = file.path ?? '';
-
-    // Read and return firmware chunks from the selected BIN file
-    return _readBinaryFile(binFilePath, mtuSize);
-  } else {
-    // Return an empty list if the user canceled the file picker
-    return [];
+  if (result == null) {
+    throw 'No file selected.';
   }
+
+  final file = result.files.first;
+  print(file.path);
+  return _openFileAndGetFirmwareData(file, mtuSize);
+}
+
+Future<List<Uint8List>> _openFileAndGetFirmwareData(PlatformFile file, int mtuSize) async {
+  final bytes = await File(file.path!).readAsBytes();
+  List<Uint8List> firmwareData = [];
+
+  for (int i = 0; i < bytes.length; i += mtuSize) {
+    int end = i + mtuSize;
+    if (end > bytes.length) {
+      end = bytes.length;
+    }
+    firmwareData.add(bytes.sublist(i, end));
+  }
+
+  print('Imported');
+  return firmwareData;
 }
 
 
-}
+
+/*void fetchedCharacteristics(BluetoothService service, String dataUUID, String controlUUID) {
+  print('Service UUID: ${service.uuid}');
+  var characteristics = service.characteristics;
+  BluetoothCharacteristic? dataCharacteristic;
+  BluetoothCharacteristic? controlCharacteristic;
+
+  for (BluetoothCharacteristic c in characteristics) {
+    print('Characteristic UUID: ${c.uuid}');
+    if (c.uuid.toString() == dataUUID) {
+      dataCharacteristic = c;
+    }
+    if (c.uuid.toString() == controlUUID) {
+      controlCharacteristic = c;
+    }
+  }
+
+  if (dataCharacteristic != null && controlCharacteristic != null) {
+    print('Data Characteristic UUID: ${dataCharacteristic.uuid}');
+    print('Control Characteristic UUID: ${controlCharacteristic.uuid}');
+  } else {
+    print('Data or Control Characteristic not found');
+  }
+}*/
+
+
 
   
 
