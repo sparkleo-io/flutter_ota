@@ -201,20 +201,21 @@ Future<List<Uint8List>> getFirmware(int firmwareType, int mtuSize) {
 }
 */
 //ota_package.dart
+import 'dart:async';
 import 'dart:io';
 import 'dart:typed_data';
 import 'package:flutter/services.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'package:file_picker/file_picker.dart';
-
-
+import 'package:get/get.dart';
 
 
 abstract class OtaPackage {
   
   Future<void> updateFirmware(BluetoothDevice device, int firmwareType,BluetoothService service, BluetoothCharacteristic dataUUID, BluetoothCharacteristic controlUUID,{String? binFilePath}); 
   bool Firmwareupdate = false;
-
+  Stream<int> get percentageStream;
+  
 }
 
 class BleRepository {
@@ -238,76 +239,14 @@ class Esp32OtaPackage implements OtaPackage {
   final BluetoothCharacteristic dataCharacteristic;
   final BluetoothCharacteristic controlCharacteristic;
   bool Firmwareupdate = false;
+  StreamController<int> _percentageController = StreamController<int>.broadcast();
+  Stream<int> get percentageStream => _percentageController.stream;
+  
 
   Esp32OtaPackage(this.dataCharacteristic, this.controlCharacteristic);
 
   @override
-  /*
-Future<void> updateFirmware(BluetoothDevice device, int firmwareType, {String? binFilePath})  async {
-   
-  final bleRepo = BleRepository();
-
-  // Write packet size data on the dataCharacteristic
-  int mtuSize = await device.mtu.first;
-  Uint8List byteList = Uint8List(2);
-  byteList[0] = mtuSize & 0xFF;
-  byteList[1] = (mtuSize >> 8) & 0xFF;
-
- 
-  
- 
-
-  // Get the firmware chunks
-  List<Uint8List> binaryChunks;
-if (firmwareType == 1 && binFilePath != null && binFilePath.isNotEmpty) {
-  binaryChunks = await getFirmware(firmwareType, mtuSize, binFilePath: binFilePath);
-  
-} else if (firmwareType == 2) {
-  binaryChunks = await _getFirmwareFromPicker(mtuSize);
-} else { 
-  binaryChunks = [];
-}
-print("After selection of firmware type");
- // Write x01 to the controlCharacteristic and check if it returns value of 0x02
-  await bleRepo.writeDataCharacteristic(dataCharacteristic, byteList);
-// need to change this tomorrow
-  await bleRepo.writeDataCharacteristic(controlCharacteristic, Uint8List.fromList([1]));
-   print('Inside update firmware , af write char char ');
-  List<int> value = await bleRepo.readCharacteristic(controlCharacteristic);
-  print('value returned is this ------- ${value[0]}');
-  
-
-  print('this is length of binary chunks ----- ${binaryChunks.length}');
-  int packageNumber = 0;
-  for (Uint8List chunk in binaryChunks) {
-    await bleRepo.writeDataCharacteristic(dataCharacteristic, chunk);
-    packageNumber++;
-
-    double progress = (packageNumber / binaryChunks.length) * 100;
-    int roundedProgress = progress.round(); // Rounded off progress value
-    print('Writing package number $packageNumber of ${binaryChunks.length} to ESP32');
-    print('Progress: $roundedProgress%');
-  }
-   
-   
-
-
-
-  // Write x04 to the controlCharacteristic to finish the update process
-  await bleRepo.writeDataCharacteristic(controlCharacteristic, Uint8List.fromList([4]));
-
-  // Check if controlCharacteristic reads 0x05, indicating OTA update finished
-  value = await bleRepo.readCharacteristic(controlCharacteristic);
-  if (value[0] == 5) {
-    print('OTA update finished');
-    Firmwareupdate = true; // Firmware update was successful
-  } else {
-    print('OTA update failed');
-    Firmwareupdate = false; // Firmware update failed
-  }
-}*/
-
-Future<void> updateFirmware(BluetoothDevice device, int firmwareType, BluetoothService service,BluetoothCharacteristic dataUUID, BluetoothCharacteristiccontrolUUID, {String? binFilePath}) async {
+Future<void> updateFirmware(BluetoothDevice device, int firmwareType, BluetoothService service,BluetoothCharacteristic dataUUID, BluetoothCharacteristic controlUUID, {String? binFilePath}) async {
   final bleRepo = BleRepository();
 
   // Write packet size data on the dataCharacteristic
@@ -346,6 +285,13 @@ Future<void> updateFirmware(BluetoothDevice device, int firmwareType, BluetoothS
       int roundedProgress = progress.round(); // Rounded off progress value
       print('Writing package number $packageNumber of ${binaryChunks.length} to ESP32');
       print('Progress: $roundedProgress%');
+      _percentageController.add(roundedProgress);
+
+      // Print the stream value
+  _percentageController.stream.listen((value) {
+    print('Stream value in pkg: $value');
+  });
+   
     }
 
     // Write x04 to the controlCharacteristic to finish the update process
@@ -360,8 +306,13 @@ Future<void> updateFirmware(BluetoothDevice device, int firmwareType, BluetoothS
       print('OTA update failed');
       Firmwareupdate = false; // Firmware update failed
     }
-  } 
+    
+  }
+ 
+
 }
+
+
 
 
   
@@ -431,29 +382,6 @@ Future<List<Uint8List>> _openFileAndGetFirmwareData(PlatformFile file, int mtuSi
 
 
 
-/*void fetchedCharacteristics(BluetoothService service, String dataUUID, String controlUUID) {
-  print('Service UUID: ${service.uuid}');
-  var characteristics = service.characteristics;
-  BluetoothCharacteristic? dataCharacteristic;
-  BluetoothCharacteristic? controlCharacteristic;
-
-  for (BluetoothCharacteristic c in characteristics) {
-    print('Characteristic UUID: ${c.uuid}');
-    if (c.uuid.toString() == dataUUID) {
-      dataCharacteristic = c;
-    }
-    if (c.uuid.toString() == controlUUID) {
-      controlCharacteristic = c;
-    }
-  }
-
-  if (dataCharacteristic != null && controlCharacteristic != null) {
-    print('Data Characteristic UUID: ${dataCharacteristic.uuid}');
-    print('Control Characteristic UUID: ${controlCharacteristic.uuid}');
-  } else {
-    print('Data or Control Characteristic not found');
-  }
-}*/
 
 
 
