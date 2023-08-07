@@ -18,8 +18,8 @@ dependencies:
   file_picker: ^5.3.2
   mockito: ^5.4.2
   path: ^1.8.3
-  open_file: ^3.3.2
   get: ^4.6.5
+  http: ^1.1.0
 
 dev_dependencies:
   flutter_test:
