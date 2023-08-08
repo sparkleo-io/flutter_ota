@@ -1,7 +1,7 @@
 #!/bin/sh
 # This is a generated file; do not edit or check into version control.
-export "FLUTTER_ROOT=D:\Software\Flutter Folder\flutter"
-export "FLUTTER_APPLICATION_PATH=D:\D drive data\Kids\Minhal\OFFICE-FOLDER\Liion Power App\flutter_ota"
+export "FLUTTER_ROOT=/Users/saroshtahir/Work-folder/flutter"
+export "FLUTTER_APPLICATION_PATH=/Users/saroshtahir/Downloads/flutter_ota"
 export "COCOAPODS_PARALLEL_CODE_SIGN=true"
 export "FLUTTER_BUILD_DIR=build"
 export "FLUTTER_BUILD_NAME=0.0.1"
