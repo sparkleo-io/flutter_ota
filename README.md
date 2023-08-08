@@ -208,6 +208,7 @@ class _FirmwareUpdateScreenState extends State<FirmwareUpdateScreen> {
 
 ## Flow Chart
 
+![Alt text](image.png)
 
 ## Purpose
 
