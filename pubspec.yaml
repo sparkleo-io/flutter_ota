@@ -10,12 +10,12 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-
-  cupertino_icons: ^1.0.2
-  flutter_blue_plus: ^1.5.2
-  permission_handler: ^10.3.0
-  path_provider: ^2.0.15
-  file_picker: ^5.3.2
+  
+  cupertino_icons: ^1.0.5
+  flutter_blue_plus: ^1.13.0
+  permission_handler: ^10.4.3
+  path_provider: ^2.1.0
+  file_picker: ^5.3.3
   mockito: ^5.4.2
   path: ^1.8.3
   get: ^4.6.5
