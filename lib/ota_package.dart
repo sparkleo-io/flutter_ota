@@ -1,16 +1,16 @@
+// ignore_for_file: annotate_overrides, avoid_print, prefer_const_constructors
 
-
-//ota_package.dart
-
+// Import necessary libraries
 import 'dart:async';
 import 'dart:io';
-import 'dart:typed_data';
 import 'package:flutter/services.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:http/http.dart' as http;
 
+// Abstract class defining the structure of an OTA package
 abstract class OtaPackage {
+  // Method to update firmware
   Future<void> updateFirmware(
     BluetoothDevice device,
     int firmwareType,
@@ -18,35 +18,40 @@ abstract class OtaPackage {
     BluetoothCharacteristic dataUUID,
     BluetoothCharacteristic controlUUID,
     {String? binFilePath, String? url}
-
   );
-  bool Firmwareupdate = false;
+  
+  // Property to track firmware update status
+  bool firmwareupdate = false;
+
+  // Stream to provide progress percentage
   Stream<int> get percentageStream;
-  Future<List<Uint8List>> _getFirmwareFromPicker(int mtuSize);
- 
 }
 
+// Class responsible for handling BLE repository operations
 class BleRepository {
-  final FlutterBluePlus flutterBlue = FlutterBluePlus.instance;
-
+  // Write data to a Bluetooth characteristic
   Future<void> writeDataCharacteristic(BluetoothCharacteristic characteristic, Uint8List data) async {
     await characteristic.write(data);
   }
 
+  // Read data from a Bluetooth characteristic
   Future<List<int>> readCharacteristic(BluetoothCharacteristic characteristic) async {
     return await characteristic.read();
   }
 
+  // Request a specific MTU size from a Bluetooth device
   Future<void> requestMtu(BluetoothDevice device, int mtuSize) async {
     await device.requestMtu(mtuSize);
   }
 }
 
+// Implementation of OTA package for ESP32
 class Esp32OtaPackage implements OtaPackage {
   final BluetoothCharacteristic dataCharacteristic;
   final BluetoothCharacteristic controlCharacteristic;
-  bool Firmwareupdate = false;
-  StreamController<int> _percentageController = StreamController<int>.broadcast();
+  bool firmwareupdate = false;
+  final StreamController<int> _percentageController = StreamController<int>.broadcast();
+  @override
   Stream<int> get percentageStream => _percentageController.stream;
 
   Esp32OtaPackage(this.dataCharacteristic, this.controlCharacteristic);
@@ -62,12 +67,17 @@ class Esp32OtaPackage implements OtaPackage {
   ) async {
     final bleRepo = BleRepository();
 
+    // Get MTU size from the device
     int mtuSize = await device.mtu.first;
+    
+    // Prepare a byte list to write MTU size to controlCharacteristic
     Uint8List byteList = Uint8List(2);
     byteList[0] = mtuSize & 0xFF;
     byteList[1] = (mtuSize >> 8) & 0xFF;
 
     List<Uint8List> binaryChunks;
+
+    // Choose firmware source based on firmwareType
     if (firmwareType == 1 && binFilePath != null && binFilePath.isNotEmpty) {
       binaryChunks = await getFirmware(firmwareType, mtuSize, binFilePath: binFilePath);
     } else if (firmwareType == 2) {
@@ -82,10 +92,13 @@ class Esp32OtaPackage implements OtaPackage {
     await bleRepo.writeDataCharacteristic(dataCharacteristic, byteList);
     await bleRepo.writeDataCharacteristic(controlCharacteristic, Uint8List.fromList([1]));
 
+    // Read value from controlCharacteristic
     List<int> value = await bleRepo.readCharacteristic(controlCharacteristic).timeout(Duration(seconds: 10));
     print('value returned is this ------- ${value[0]}');
+    
     int packageNumber = 0;
     for (Uint8List chunk in binaryChunks) {
+      // Write firmware chunks to dataCharacteristic
       await bleRepo.writeDataCharacteristic(dataCharacteristic, chunk);
       packageNumber++;
 
@@ -102,19 +115,22 @@ class Esp32OtaPackage implements OtaPackage {
     // Check if controlCharacteristic reads 0x05, indicating OTA update finished
     value = await bleRepo.readCharacteristic(controlCharacteristic).timeout(Duration(seconds: 600));
     print('value returned is this ------- ${value[0]}');
+    
     if (value[0] == 5) {
       print('OTA update finished');
-      Firmwareupdate = true; // Firmware update was successful
+      firmwareupdate = true; // Firmware update was successful
     } else {
       print('OTA update failed');
-      Firmwareupdate = false; // Firmware update failed
+      firmwareupdate = false; // Firmware update failed
     }
   }
 
+  // Convert Uint8List to List<int>
   List<int> uint8ListToIntList(Uint8List uint8List) {
     return uint8List.toList();
   }
 
+  // Read binary file and split it into chunks
   Future<List<Uint8List>> _readBinaryFile(String filePath, int mtuSize) async {
     final ByteData data = await rootBundle.load(filePath);
     final List<int> bytes = data.buffer.asUint8List();
@@ -131,6 +147,7 @@ class Esp32OtaPackage implements OtaPackage {
     return chunks;
   }
 
+  // Get firmware based on firmwareType
   Future<List<Uint8List>> getFirmware(int firmwareType, int mtuSize, {String? binFilePath}) {
     if (firmwareType == 2) {
       return _getFirmwareFromPicker(mtuSize);
@@ -140,8 +157,9 @@ class Esp32OtaPackage implements OtaPackage {
       return Future.value([]);
     }
   }
-   @override
-    Future<List<Uint8List>> _getFirmwareFromPicker(int mtuSize) async {
+
+  // Get firmware chunks from file picker
+  Future<List<Uint8List>> _getFirmwareFromPicker(int mtuSize) async {
     final result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
       allowedExtensions: ['bin'],
@@ -152,7 +170,7 @@ class Esp32OtaPackage implements OtaPackage {
     }
 
     final file = result.files.first;
-    print(file.path);
+
     try {
       final firmwareData = await _openFileAndGetFirmwareData(file, mtuSize);
 
@@ -166,6 +184,7 @@ class Esp32OtaPackage implements OtaPackage {
     }
   }
 
+  // Open file, read bytes, and split into chunks
   Future<List<Uint8List>> _openFileAndGetFirmwareData(PlatformFile file, int mtuSize) async {
     final bytes = await File(file.path!).readAsBytes();
     List<Uint8List> firmwareData = [];
@@ -177,44 +196,35 @@ class Esp32OtaPackage implements OtaPackage {
       }
       firmwareData.add(Uint8List.fromList(bytes.sublist(i, end)));
     }
-
-    print('Imported');
     return firmwareData;
   }
-  
-  Future<List<Uint8List>> _getFirmwareFromUrl(String url, int mtuSize) async {
-  try {
-    final response = await http.get(Uri.parse(url)).timeout(Duration(seconds:10 ));
 
-    // Check if the HTTP request was successful (status code 200)
-    if (response.statusCode == 200) {
-      final List<int> bytes = response.bodyBytes;
-      final int chunkSize = mtuSize;
-      List<Uint8List> chunks = [];
-      for (int i = 0; i < bytes.length; i += chunkSize) {
-        int end = i + chunkSize;
-        if (end > bytes.length) {
-          end = bytes.length;
+  // Fetch firmware chunks from a URL
+  Future<List<Uint8List>> _getFirmwareFromUrl(String url, int mtuSize) async {
+    try {
+      final response = await http.get(Uri.parse(url)).timeout(Duration(seconds: 10));
+
+      // Check if the HTTP request was successful (status code 200)
+      if (response.statusCode == 200) {
+        final List<int> bytes = response.bodyBytes;
+        final int chunkSize = mtuSize;
+        List<Uint8List> chunks = [];
+        for (int i = 0; i < bytes.length; i += chunkSize) {
+          int end = i + chunkSize;
+          if (end > bytes.length) {
+            end = bytes.length;
+          }
+          Uint8List chunk = Uint8List.fromList(bytes.sublist(i, end));
+          chunks.add(chunk);
         }
-        Uint8List chunk = Uint8List.fromList(bytes.sublist(i, end));
-        chunks.add(chunk);
+        return chunks;
+      } else {
+        // Handle HTTP error (e.g., status code is not 200)
+        throw 'HTTP Error: ${response.statusCode} - ${response.reasonPhrase}';
       }
-      return chunks;
-    } else {
-      // Handle HTTP error (e.g., status code is not 200)
-      throw 'HTTP Error: ${response.statusCode} - ${response.reasonPhrase}';
+    } catch (e) {
+      // Handle other errors (e.g., timeout, network connectivity issues)
+      throw 'Error fetching firmware from URL: $e';
     }
-  } catch (e) {
-    // Handle other errors (e.g., timeout, network connectivity issues)
-    throw 'Error fetching firmware from URL: $e';
   }
 }
-
-}
-
-
-
-
-  
-
-
