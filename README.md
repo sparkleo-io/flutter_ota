@@ -207,16 +207,12 @@ class _FirmwareUpdateScreenState extends State<FirmwareUpdateScreen> {
 ```
 
 ## Flow Chart
-![image](https://github.com/sparkleo-io/flutter_ota/assets/109615344/c735a2ab-9618-4eb7-9004-73668f464646)
 
+![Alt text](image.png)
 
 ## Purpose
 
 The `flutter_ota_package` simplifies the OTA firmware update process for ESP32 devices through Bluetooth Low Energy. It allows developers to wirelessly update the firmware and provides a user-friendly experience. This package lets you easily keep your ESP32 devices up-to-date with the latest firmware.
-
-Sure, here's the revised version of the package readme with "PC" replaced by "app":
-
-Sure, here's the revised version of the package readme with "PC" replaced by "app":
 
 ## Ota firmware
 
