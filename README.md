@@ -207,8 +207,8 @@ class _FirmwareUpdateScreenState extends State<FirmwareUpdateScreen> {
 ```
 
 ## Flow Chart
+![image](https://github.com/sparkleo-io/flutter_ota/assets/109615344/c735a2ab-9618-4eb7-9004-73668f464646)
 
-![image](https://github.com/MinhalWaheed2001/flutter_ota/assets/109615344/9038e15b-fc3b-4d52-b13d-87962f77afe2)
 
 ## Purpose
 
