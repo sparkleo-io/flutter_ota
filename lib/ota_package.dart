@@ -69,6 +69,8 @@ class Esp32OtaPackage implements OtaPackage {
 
     // Get MTU size from the device
     int mtuSize = await device.mtu.first;
+
+    print("MTU size f current device $mtuSize");
     
     // Prepare a byte list to write MTU size to controlCharacteristic
     Uint8List byteList = Uint8List(2);
@@ -134,7 +136,7 @@ class Esp32OtaPackage implements OtaPackage {
   Future<List<Uint8List>> _readBinaryFile(String filePath, int mtuSize) async {
     final ByteData data = await rootBundle.load(filePath);
     final List<int> bytes = data.buffer.asUint8List();
-    final int chunkSize = mtuSize;
+    final int chunkSize = mtuSize-3;
     List<Uint8List> chunks = [];
     for (int i = 0; i < bytes.length; i += chunkSize) {
       int end = i + chunkSize;
@@ -150,7 +152,8 @@ class Esp32OtaPackage implements OtaPackage {
   // Get firmware based on firmwareType
   Future<List<Uint8List>> getFirmware(int firmwareType, int mtuSize, {String? binFilePath}) {
     if (firmwareType == 2) {
-      return _getFirmwareFromPicker(mtuSize);
+      print("in package mtu size is ${mtuSize}");
+      return _getFirmwareFromPicker(mtuSize-3);
     } else if (firmwareType == 1 && binFilePath != null && binFilePath.isNotEmpty) {
       return _readBinaryFile(binFilePath, mtuSize);
     } else {
@@ -160,6 +163,8 @@ class Esp32OtaPackage implements OtaPackage {
 
   // Get firmware chunks from file picker
   Future<List<Uint8List>> _getFirmwareFromPicker(int mtuSize) async {
+    print("MtU size in fie pickeer is ${mtuSize}");
+    mtuSize = mtuSize -3;
     final result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
       allowedExtensions: ['bin'],
@@ -207,7 +212,7 @@ class Esp32OtaPackage implements OtaPackage {
       // Check if the HTTP request was successful (status code 200)
       if (response.statusCode == 200) {
         final List<int> bytes = response.bodyBytes;
-        final int chunkSize = mtuSize;
+        final int chunkSize = mtuSize-3;
         List<Uint8List> chunks = [];
         for (int i = 0; i < bytes.length; i += chunkSize) {
           int end = i + chunkSize;
