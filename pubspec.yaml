@@ -1,6 +1,6 @@
-name: ota_package
-description: A Flutter package for OTA updating firmware of ESP32.
-version: 0.0.1
+name: flutter_ota
+description: A Flutter package for OTA updating firmware of ESP32 using Bluetooth Low Energy (BLE).
+version: 0.0.9
 homepage: https://github.com/sparkleo-io/flutter_ota.git
 
 environment:
@@ -12,7 +12,7 @@ dependencies:
     sdk: flutter
   
   cupertino_icons: ^1.0.5
-  flutter_blue_plus: ^1.13.1
+  flutter_blue_plus: ^1.13.0
   permission_handler: ^10.4.3
   path_provider: ^2.1.0
   file_picker: ^5.3.3
