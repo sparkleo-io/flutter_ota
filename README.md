@@ -1,20 +1,24 @@
-**Package Name:** flutter_ota_package
+**Package Name:** flutter_ota
 
 **Description:**
-`flutter_ota_package` is a Dart package that provides functionality to update the firmware of an ESP32 device over Bluetooth Low Energy (BLE). It includes an abstract `OtaPackage` class that defines the necessary methods for performing OTA (Over-The-Air) firmware updates, as well as an implementation specifically designed for ESP32 devices named `Esp32otaPackage`.
+`flutter_ota` is a Dart package that provides functionality to update the firmware of an ESP32 device over Bluetooth Low Energy (BLE). It includes an abstract `OtaPackage` class that defines the necessary methods for performing OTA (Over-The-Air) firmware updates, as well as an implementation specifically designed for ESP32 devices named `Esp32otaPackage`.
 
 **Installation:**
 To use this package in your Flutter project, add the following dependency to your `pubspec.yaml` file:
 
 ```yaml
 dependencies:
-  flutter_ota_package: ^1.0.0
+  flutter_ota: ^1.0.0
 ```
 
 **Import:**
 ```dart
-import 'package:flutter_ota_package/flutter_ota_package.dart';
+import 'package:flutter_ota/flutter_ota.dart';
 ```
+
+**Github Repository**
+
+Link to Github: https://github.com/sparkleo-io/flutter_ota.git
 
 **OtaPackage:**
 This is an abstract class that defines the contract for performing firmware updates over BLE. It has the following methods and properties:
@@ -34,7 +38,6 @@ This class provides helper methods to interact with the Bluetooth Low Energy (BL
 
 3. `Future<void> requestMtu(...)`: This method is used to request a specific Maximum Transfer Unit (MTU) size from the BLE device, which can be useful when sending large chunks of firmware data during the update process.
 
-
 **Constants for FirmwareType:**
 To make it easier to represent different firmware types, you can use the following constants:
 
@@ -43,7 +46,6 @@ const int FIRMWARE_FROM_BINARY_FILE = 1;
 const int FIRMWARE_FROM_FILE_PICKER = 2;
 const int FIRMWARE_FROM_URL = 3;
 ```
-
 
 ### How to Use
 
@@ -116,13 +118,11 @@ final StreamSubscription<int> progressSubscription = esp32otaPackage.percentageS
 
 ## Example App
 
-Here's an example app demonstrating how to use the `flutter_ota_package`:
+Here's an example app demonstrating how to use the `flutter_ota`:
 
 ```dart
 import 'package:flutter/material.dart';
-import 'package:flutter_
-
-ota_package/flutter_ota_package.dart';
+import 'package:flutter_ota/flutter_ota.dart';
 
 class FirmwareUpdateScreen extends StatefulWidget {
   @override
@@ -206,19 +206,17 @@ class _FirmwareUpdateScreenState extends State<FirmwareUpdateScreen> {
 }
 ```
 
-## Flow Chart
-
-![Alt text](image.png)
-
 ## Purpose
 
-The `flutter_ota_package` simplifies the OTA firmware update process for ESP32 devices through Bluetooth Low Energy. It allows developers to wirelessly update the firmware and provides a user-friendly experience. This package lets you easily keep your ESP32 devices up-to-date with the latest firmware.
+The `flutter_ota` simplifies the OTA firmware update process for ESP32 devices through Bluetooth Low Energy. It allows developers to wirelessly update the firmware and provides a user-friendly experience. This package lets you easily keep your ESP32 devices up-to-date with the latest firmware.
 
 ## Ota firmware
 
 **Main Features of ESP32 OTA Firmware with OTA Package**
 
-1. **Over-the-Air (OTA) Update Capability:** The firmware for ESP32 devices is designed to support Over-the-Air updates via Bluetooth Low Energy (BLE). This allows developers to wirelessly update the firmware of ESP32 devices without the need for physical connections.
+1. **Over-the-Air (OTA) Update Capability:** The firmware for ESP32 devices is designed to support Over-the-Air updates via Bluetooth
+
+ Low Energy (BLE). This allows developers to wirelessly update the firmware of ESP32 devices without the need for physical connections.
 
 2. **NimBLE Bluetooth Stack:** The OTA firmware implementation uses the `NimBLE Bluetooth` stack provided by the ESP-IDF. NimBLE is known for using less flash space and RAM compared to the Bluedroid stack, making it suitable for projects focused on BLE.
 
