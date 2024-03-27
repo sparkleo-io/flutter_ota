@@ -48,6 +48,7 @@ Esp32OtaPackage otaPackage = Esp32OtaPackage(notifyCharacteristic, dataCharacter
 
 4. Choose the firmware update type (`updateType`) and firmware type (`firmwareType`):
 
+
 * `updateType`:
     * 1: For traditional OTA updates using a binary file or URL.
     * 2: For custom OTA updates implemented on the ESP32 side.
@@ -120,6 +121,7 @@ import '../../../../utils/colors.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 class NewOTAUpdatePage extends StatefulWidget {
   const NewOTAUpdatePage({Key? key}) : super(key: key);
+
 
   @override
   State<NewOTAUpdatePage> createState() => _NewOTAUpdatePageState();
@@ -346,7 +348,6 @@ class _NewOTAUpdatePageState extends State<NewOTAUpdatePage> {
     );
   }
 }
-
 ```
 
 ## Purpose
