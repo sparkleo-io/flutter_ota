@@ -1,39 +1,35 @@
 name: flutter_ota
 description: A Flutter package for OTA updating firmware of ESP32 using Bluetooth Low Energy (BLE).
-version: 0.0.9
+version: 0.1.15
 homepage: https://github.com/sparkleo-io/flutter_ota.git
 
 environment:
-  sdk: '>=3.0.3 <4.0.0'
-  flutter: ">=1.17.0"
+  sdk: '>=2.19.3 <3.0.0'
+  flutter: ">=2.0.0"
 
 dependencies:
   flutter:
     sdk: flutter
-  
-  cupertino_icons: ^1.0.5
+  cupertino_icons: ^1.0.8
   flutter_blue_plus: ^1.13.0
-  permission_handler: ^10.4.3
+  permission_handler: ^11.3.1
   path_provider: ^2.1.0
-  file_picker: ^5.3.3
-  mockito: ^5.4.2
-  path: ^1.8.3
-  get: ^4.6.5
+  file_picker: ^8.0.0+1
   http: ^1.1.0
+  mockito: ^5.4.4
+  path: ^1.8.3
+  get: ^4.6.6
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  flutter_lints: ^2.0.0
+  flutter_lints: ^1.0.0 # Updated to a valid version
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
 
 # The following section is specific to Flutter packages.
 flutter:
-
   uses-material-design: true
-
-  # To add assets to your application, add an assets section, like this:
   assets:
     - assets/esp32_ble_ota.bin

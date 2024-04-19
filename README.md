@@ -48,10 +48,13 @@ Esp32OtaPackage otaPackage = Esp32OtaPackage(notifyCharacteristic, dataCharacter
 
 4. Choose the firmware update type (`updateType`) and firmware type (`firmwareType`):
 
-
 * `updateType`:
-    * 1: For traditional OTA updates using a binary file or URL.
-    * 2: For custom OTA updates implemented on the ESP32 side.
+    * Update Type 1: ESP-IDF/Espressif Firmware Update
+      If updateType is set to 1, it indicates that the firmware update follows the ESP-IDF/Espressif framework. In this case, you'll typically perform OTA updates using binary files and utilize the NimBLE Bluetooth stack.
+
+    * Update Type 2: Arduino-Based Firmware Update
+      If updateType is set to 2, it suggests that the firmware update is based on the Arduino framework for ESP32. This could involve custom OTA update logic implemented on the ESP32 side, possibly using specific GATT services and characteristics for communication.
+      By checking the updateType parameter, you can adapt your OTA update logic to the specific requirements of the firmware implementation. This ensures compatibility and seamless OTA updates for different types of ESP32 firmware.
 * `firmwareType`:
     * 1: For binary firmware files stored in your Flutter project assets.
     * 2: To select a binary firmware file from the device storage.
@@ -121,7 +124,6 @@ import '../../../../utils/colors.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 class NewOTAUpdatePage extends StatefulWidget {
   const NewOTAUpdatePage({Key? key}) : super(key: key);
-
 
   @override
   State<NewOTAUpdatePage> createState() => _NewOTAUpdatePageState();
@@ -348,6 +350,7 @@ class _NewOTAUpdatePageState extends State<NewOTAUpdatePage> {
     );
   }
 }
+
 ```
 
 ## Purpose
@@ -473,12 +476,4 @@ The `flutter_ota` package provides a streamlined approach to performing OTA firm
 * Asynchronous programming for efficient BLE communication
 
 By integrating `flutter_ota` into your Flutter project, you can seamlessly deliver firmware updates to your ESP32 devices wirelessly, enhancing user experience and ensuring your devices stay up-to-date.
-
-## Additional Notes
-
-* Refer to the official documentation of the `flutter_ota` package for detailed installation and usage instructions.
-* Explore the provided code example to understand how to integrate the package into your Flutter application.
-* Ensure compatibility between the `flutter_ota` package version and the BLE library you're using (`flutter_blue_plus` in this case).
-* For more advanced OTA update functionalities, consider exploring custom implementations on both the ESP32 side and the Flutter app.
-
-This comprehensive explanation effectively covers the `flutter_ota` package, its functionalities, and its usage within a Flutter application for OTA updates on ESP32 devices. It provides valuable insights for developers seeking to implement wireless firmware updates in their projects.
+This comprehensive explanation effectively covers the `flutter_ota` package, its functionalities, and its usage within a Flutter application for OTA updates on ESP32 devices. It provides valuable insights for developers seeking to implement wireless firmware updates in their projects. 
