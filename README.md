@@ -103,7 +103,7 @@ if (otaPackage.firmwareUpdate) {
 
 ## Example Application
 
-The example application code is available on `flutter_ota` package git repository.
+The example application code is available in the example folder of this repository.
 
 ### ESP-IDF OTA Firmware
 
