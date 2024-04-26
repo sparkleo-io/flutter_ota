@@ -357,7 +357,8 @@ class _NewOTAUpdatePageState extends State<NewOTAUpdatePage> {
 
 The `flutter_ota` simplifies the OTA firmware update process for ESP32 devices through Bluetooth Low Energy. It allows developers to wirelessly update the firmware and provides a user-friendly experience. This package lets you easily keep your ESP32 devices up-to-date with the latest firmware.
 
-## Ota firmware [ https://michaelangerer.dev/esp32/ble/ota/2021/06/08/esp32-ota-part-2.html ]
+## ESP-IDF Based Ota firmware
+Link to firmware: https://michaelangerer.dev/esp32/ble/ota/2021/06/08/esp32-ota-part-2.html
 
 **Main Features of ESP32 OTA Firmware with OTA Package**
 
@@ -426,7 +427,8 @@ Firmware Packets
 By using these specific values, the ESP32 and the app can effectively communicate and coordinate the OTA update process over BLE. This ensures a controlled and reliable update mechanism, allowing the ESP32 to seamlessly receive and apply new firmware wirelessly.
 
 
-## Ota Firmware [https://github.com/fbiego/ESP32_BLE_OTA_Arduino]
+## Arduino Ota Firmware 
+Link to firmware: https://github.com/fbiego/ESP32_BLE_OTA_Arduino
 
 This code segment outlines the core logic for performing an OTA update using the `flutter_ota` package. It can be integrated into the `updateFirmware` method of the `Esp32OtaPackage` class or a similar function within your Flutter application. Here's a detailed breakdown:
 
