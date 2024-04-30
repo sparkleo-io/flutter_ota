@@ -107,11 +107,11 @@ The example application code is available in the example folder of this reposito
 
 ### ESP-IDF OTA Firmware
 
-The article (https://michaelangerer.dev/esp32/ble/ota/2021/06/08/esp32-ota-part-2.html) provides insights into the core logic for executing an Over-The-Air (OTA) update using the `flutter_ota` package in conjunction with the ESP-IDF framework. This firmware update method leverages the capabilities of ESP32 devices to wirelessly update their firmware via Bluetooth Low Energy (BLE).
+The article (https://michaelangerer.dev/esp32/ble/ota/2021/06/08/esp32-ota-part-2.html) provides insights into the core logic for executing an Over-The-Air (OTA) update using ESP-IDF framework. This firmware update method leverages the capabilities of ESP32 devices to wirelessly update their firmware via Bluetooth Low Energy (BLE).
 
 ### Arduino IDE OTA Firmware
 
-The GitHub repository (https://github.com/fbiego/ESP32_BLE_OTA_Arduino) hosts code segments suitable for integration into the `updateFirmware` method of the `Esp32OtaPackage` class or similar functions within Flutter applications utilizing the Arduino IDE. This firmware update approach is tailored for ESP32 devices running firmware developed with the Arduino framework.
+The GitHub repository (https://github.com/fbiego/ESP32_BLE_OTA_Arduino) provides firmware suitable for integration utilizing the Arduino IDE framework.
 
 ## Conclusion
 
