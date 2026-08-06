@@ -1,0 +1,53 @@
+# When .pubignore is present, pub uses it instead of .gitignore for the
+# publish archive. Keep this aligned with .gitignore, plus package-only excludes.
+
+# Miscellaneous
+*.class
+*.log
+*.pyc
+*.swp
+.DS_Store
+.atom/
+.buildlog/
+.history
+.svn/
+migrate_working_dir/
+
+# Android — machine-local SDK paths
+**/local.properties
+
+# IntelliJ / IDE
+*.iml
+*.ipr
+*.iws
+.idea/
+
+# Flutter/Dart/Pub
+/pubspec.lock
+**/doc/api/
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+.pub/
+build/
+
+# Internal review / AI artifacts (never publish)
+code_review.html
+*_report.html
+deep_pr_review*.html
+
+# Example generated / ephemeral files that should not ship on pub.dev
+example/**/GeneratedPluginRegistrant.*
+example/**/generated_plugin_registrant.*
+example/**/generated_plugins.cmake
+example/android/gradle/wrapper/gradle-wrapper.jar
+example/android/gradlew
+example/android/gradlew.bat
+example/ios/Flutter/Generated.xcconfig
+example/ios/Flutter/flutter_export_environment.sh
+example/ios/Flutter/ephemeral/
+example/macos/Flutter/ephemeral/
+example/linux/flutter/ephemeral/
+example/windows/flutter/ephemeral/

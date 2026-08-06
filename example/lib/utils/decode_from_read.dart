@@ -50,8 +50,9 @@ class DecodeRead {
         Uint8List toUint8 = Uint8List.fromList(temp);
         int size = temp.length ~/ 2;
         for (int i = 0; i < size; i++) {
-          var sample =
-          toUint8.buffer.asByteData(0).getUint16(i * 2, Endian.big);
+          var sample = toUint8.buffer
+              .asByteData(0)
+              .getUint16(i * 2, Endian.big);
           converted.add(sample);
         }
       } catch (e) {
@@ -79,8 +80,9 @@ class DecodeRead {
         Uint8List toUint8 = Uint8List.fromList(temp);
         int size = temp.length ~/ 4;
         for (int i = 0; i < size; i++) {
-          var sample =
-          toUint8.buffer.asByteData(0).getUint32(i * 4, Endian.big);
+          var sample = toUint8.buffer
+              .asByteData(0)
+              .getUint32(i * 4, Endian.big);
           converted.add(sample);
         }
       } catch (e) {

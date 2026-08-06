@@ -5,17 +5,15 @@ double paddingHalf = 10;
 
 EdgeInsets edgeInsetsAllFull = EdgeInsets.all(paddingFull);
 EdgeInsets edgeInsetsAllHalf = EdgeInsets.all(paddingHalf);
-EdgeInsets edgeInsetsHorizontalHalf =
-    EdgeInsets.symmetric(horizontal: paddingHalf);
-EdgeInsets edgeInsetsHorizontalFull =
-    EdgeInsets.symmetric(horizontal: paddingFull);
+EdgeInsets edgeInsetsHorizontalHalf = EdgeInsets.symmetric(
+  horizontal: paddingHalf,
+);
+EdgeInsets edgeInsetsHorizontalFull = EdgeInsets.symmetric(
+  horizontal: paddingFull,
+);
 
-Container containerAllFull = Container(
-  padding: edgeInsetsAllFull,
-);
-Container containerAllHalf = Container(
-  padding: edgeInsetsAllHalf,
-);
+Container containerAllFull = Container(padding: edgeInsetsAllFull);
+Container containerAllHalf = Container(padding: edgeInsetsAllHalf);
 
 Container containerLeftFull = Container(
   padding: EdgeInsets.only(left: paddingFull),

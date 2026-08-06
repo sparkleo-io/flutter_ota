@@ -11,4 +11,3 @@ const Color greyColor = Colors.grey;
 const Color greenColor = Colors.green;
 const Color primaryColor = Color(0xFF016553);
 const Color secondaryColor = Color(0xFF01B2A8);
-

@@ -1,11 +1,8 @@
 import 'dart:io';
-import 'package:device_info_plus/device_info_plus.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 
-import '../../common/toast/show_toast.dart';
-
 class BluetoothAdapter {
-
   static bool isBluetoothOn = false;
 
   static void initBleStateStream() {
@@ -24,7 +21,7 @@ class BluetoothAdapter {
   }
 
   Future<bool> enableBT() async {
-    print("isbluettoth turn on is $isBluetoothOn");
+    debugPrint("isbluettoth turn on is $isBluetoothOn");
     if (Platform.isAndroid) {
       if (isBluetoothOn) {
         return true;
@@ -38,10 +35,24 @@ class BluetoothAdapter {
         }
       }
     } else {
+      // iOS apps cannot turn Bluetooth on programmatically. The cached
+      // `isBluetoothOn` flag can still be stale here because the adapter state
+      // starts as `unknown` until CBCentralManager initializes and the state
+      // stream may not have emitted yet. Resolve the real state by waiting for
+      // the first definitive (non-`unknown`) value instead of trusting the flag.
       if (isBluetoothOn) {
         return true;
-      } else {
-        // you can show toast message here
+      }
+      try {
+        final state = await FlutterBluePlus.adapterState
+            .firstWhere((s) => s != BluetoothAdapterState.unknown)
+            .timeout(const Duration(seconds: 5));
+        isBluetoothOn = state == BluetoothAdapterState.on;
+        debugPrint("iOS resolved adapter state: $state");
+        return isBluetoothOn;
+      } catch (e) {
+        // Timed out or errored before a definitive state arrived.
+        debugPrint("iOS Bluetooth state could not be resolved: $e");
         return false;
       }
     }
@@ -70,14 +81,14 @@ class BluetoothAdapter {
     }
   }*/
 
-  static Future<bool> _androidVerAbove12() async {
-    final deviceInfo = await DeviceInfoPlugin().androidInfo;
-    final aInfo = deviceInfo.version.release;
-    double ver = double.parse(aInfo);
-    if (ver > 13) {
-      return true;
-    } else {
-      return false;
-    }
-  }
+  // static Future<bool> _androidVerAbove12() async {
+  //   final deviceInfo = await DeviceInfoPlugin().androidInfo;
+  //   final aInfo = deviceInfo.version.release;
+  //   double ver = double.parse(aInfo);
+  //   if (ver > 13) {
+  //     return true;
+  //   } else {
+  //     return false;
+  //   }
+  // }
 }

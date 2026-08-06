@@ -1,30 +1,55 @@
-// This is a basic Flutter widget test.
+// App-specific widget smoke test.
 //
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
+// The full app bootstraps GetX dependency injection and platform permission
+// plugins in `main()`, which are not available in the widget-test harness. This
+// test instead exercises a self-contained UI component from the example so the
+// example package has a real, passing test.
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:ota_new_protocol/main.dart';
+import 'package:ota_new_protocol/common/custom_button/primary_action_button.dart';
 
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(const MyApp());
+  testWidgets('PrimaryActionButton renders its label and fires onTap', (
+    WidgetTester tester,
+  ) async {
+    int taps = 0;
 
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Center(
+            child: PrimaryActionButton(label: 'Start OTA', onTap: () => taps++),
+          ),
+        ),
+      ),
+    );
 
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
+    expect(find.text('Start OTA'), findsOneWidget);
+
+    await tester.tap(find.text('Start OTA'));
     await tester.pump();
 
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+    expect(taps, 1);
+  });
+
+  testWidgets('PrimaryActionButton is inert when onTap is null', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(
+          body: Center(
+            child: PrimaryActionButton(label: 'Disabled', onTap: null),
+          ),
+        ),
+      ),
+    );
+
+    expect(find.text('Disabled'), findsOneWidget);
+    // Tapping a disabled button must not throw.
+    await tester.tap(find.text('Disabled'));
+    await tester.pump();
   });
 }

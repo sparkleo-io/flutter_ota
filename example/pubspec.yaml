@@ -19,7 +19,8 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 version: 1.0.0+1
 
 environment:
-  sdk: '>=3.0.1 <4.0.0'
+  sdk: '>=3.8.0 <4.0.0'
+  flutter: '>=3.32.0'
 
 # Dependencies specify other packages that your package needs in order to work.
 # To automatically upgrade your package dependencies to the latest versions
@@ -35,48 +36,28 @@ dependencies:
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.2
+  get: ^4.7.3
+  permission_handler: ^12.0.3
+  flutter_blue_plus: ^2.3.8
+  location: ^8.0.1
+  device_info_plus: ^12.4.0
+  path_provider: ^2.1.5
+  file_picker: ^11.0.2
+  http: ^1.2.0
+  shared_preferences: ^2.3.2
+  flutter_ota:
+    path: ..
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
+  flutter_lints: ^6.0.0
 
 
-  get: ^4.6.5
-  flutter_blue_plus: ^1.31.13
-  battery_info: ^1.1.1
-  location: ^5.0.3
-  app_settings: ^5.0.0
-  fluttertoast: ^8.2.2
-  bluetooth_enable_fork: ^0.1.6
-  device_info_plus: ^9.0.0
-  permission_handler: ^10.2.0
-  path_provider: ^2.0.15
-  file_picker: ^5.3.3
-  http: ^1.2.0
-  flutter_ota: ^0.1.11
-
-  # The "flutter_lints" package below contains a set of recommended lints to
-  # encourage good coding practices. The lint set provided by the package is
-  # activated in the `analysis_options.yaml` file located at the root of your
-  # package. See that file for information about deactivating specific lint
-  # rules and activating additional ones.
-  flutter_lints: ^2.0.0
-
-# For information on the generic Dart part of this file, see the
-# following page: https://dart.dev/tools/pub/pubspec
 
 # The following section is specific to Flutter packages.
 flutter:
-
-  # The following line ensures that the Material Icons font is
-  # included with your application, so that you can use the icons in
-  # the material Icons class.
   uses-material-design: true
-  assets:
-    - assets/exampe.txt
-    - assets/pngs/
-    - assets/svgs/
-    - assets/helllo.ino.bin
 
   # To add assets to your application, add an assets section, like this:
   # assets:
