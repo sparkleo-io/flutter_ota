@@ -18,7 +18,8 @@ void main() {
       hungServer = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
       hungServer.listen((HttpRequest request) {
         // Leave the response open so the first updateFirmware call stays
-        // in-flight while firmware is loading (before any BLE I/O).
+        // in-flight across the await before _activeClient would historically
+        // have been assigned — and while firmware is loading.
       });
       hungFirmwareUri =
           'http://${hungServer.address.address}:${hungServer.port}/firmware.bin';
@@ -51,7 +52,7 @@ void main() {
 
     test('rejects two concurrent updateFirmware calls', () async {
       // Start both without awaiting: the first runs until its first `await`
-      // (holding `_updateInProgress`); the second must then hit the guard.
+      // (holding `_updateInFlight`); the second must then hit the guard.
       final Future<void> first = package.updateFirmware(
         device,
         UpdateType.espidf,

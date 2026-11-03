@@ -5,18 +5,15 @@ import 'package:file_picker/file_picker.dart';
 
 import 'package:flutter_ota/src/core/firmware_source.dart';
 import 'package:flutter_ota/src/exceptions/ota_exceptions.dart';
-import 'package:flutter_ota/src/firmware/firmware_image.dart';
 import 'package:flutter_ota/src/logging/ota_logger.dart';
 
-/// Loads firmware from a user-selected `.bin` or `.img` file via the platform
-/// file picker.
+/// Loads firmware from a user-selected file via the platform file picker.
 class FilePickerFirmwareSource implements FirmwareSource {
   @override
   Future<Uint8List> load() async {
     final result = await FilePicker.pickFiles(
-      type: FileType.custom,
-      allowedExtensions: supportedFirmwareExtensions.toList(),
-      // Populate `bytes` so platforms/picker modes that do not expose a file
+      type: FileType.any,
+      // Populate `bytes` for picker modes that do not expose a file path.
       withData: true,
     );
 
@@ -27,8 +24,6 @@ class FilePickerFirmwareSource implements FirmwareSource {
 
     final file = result.files.first;
     otaLogger.d('Selected firmware file: ${file.name}');
-    validateFirmwareImage(file.name);
-
     try {
       final Uint8List? bytes = file.bytes;
       if (bytes != null) {
