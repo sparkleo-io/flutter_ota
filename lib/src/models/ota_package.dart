@@ -1,6 +1,7 @@
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 
 import 'package:flutter_ota/src/models/constants.dart';
+import 'package:flutter_ota/src/models/firmware_integrity.dart';
 import 'package:flutter_ota/src/models/firmware_type.dart';
 import 'package:flutter_ota/src/models/update_type.dart';
 
@@ -18,12 +19,22 @@ abstract class OtaPackage {
   ///   the BLE single-write limit: [maxMtuSize] (512) for [UpdateType.espidf],
   ///   or [maxMtuSize] - [arduinoHeaderSize] (510) for [UpdateType.arduino],
   ///   which adds a 2-byte packet header. Out-of-range values are rejected.
+  /// [integrity]: Optional firmware integrity features (SHA-256 before
+  ///   transfer, post-flash SHA-256). Defaults to
+  ///   [FirmwareIntegrityConfig.none]. Enable only what the device firmware
+  ///   supports — features combine freely.
+  /// [saveOtaLogs]: When `true` (the default), OTA log lines for this run are
+  ///   captured in memory and available via `otaSessionLogs` /
+  ///   `otaSessionLogText` for in-app debug screens. When `false`, capture is
+  ///   disabled for the run.
   Future<void> updateFirmware(
     BluetoothDevice device,
     UpdateType updateType,
     FirmwareType firmwareType, {
     String? uri,
     int mtuSize,
+    FirmwareIntegrityConfig integrity,
+    bool saveOtaLogs,
   });
 
   /// Whether the most recent OTA update completed successfully.

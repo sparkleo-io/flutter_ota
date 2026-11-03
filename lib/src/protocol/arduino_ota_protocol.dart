@@ -2,10 +2,13 @@ import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:flutter_ota/src/core/firmware_chunker.dart';
+import 'package:flutter_ota/src/core/firmware_hash.dart';
 import 'package:flutter_ota/src/core/ota_protocol.dart';
 import 'package:flutter_ota/src/core/ota_transport.dart';
+import 'package:flutter_ota/src/exceptions/ota_exceptions.dart';
 import 'package:flutter_ota/src/logging/ota_logger.dart';
 import 'package:flutter_ota/src/models/constants.dart';
+import 'package:flutter_ota/src/models/firmware_integrity.dart';
 
 /// Arduino OTA transfer logic.
 ///
@@ -16,11 +19,21 @@ import 'package:flutter_ota/src/models/constants.dart';
 /// * **BLE packet** — one characteristic write within a segment (`mtuSize` bytes
 ///   of payload plus the 2-byte `0xFB` header).
 class ArduinoOtaProtocol implements OtaProtocol {
+  /// Creates an Arduino protocol instance.
+  ///
+  /// Pass [integrity] to enable optional post-flash SHA features that the
+  /// paired firmware understands. Default is [FirmwareIntegrityConfig.none].
+  ArduinoOtaProtocol({this.integrity = FirmwareIntegrityConfig.none});
+
   /// Bytes of firmware sent per device-acknowledged segment.
   static const int firmwareSegmentSize = 16000;
 
+  /// Integrity features active for this session.
+  final FirmwareIntegrityConfig integrity;
+
   StreamSubscription<Uint8List>? _subscription;
   Completer<bool>? _updateCompleter;
+  bool _postTransferIntegritySent = false;
 
   @override
   int get maxWriteSize => maxMtuSize - arduinoHeaderSize;
@@ -45,8 +58,10 @@ class ArduinoOtaProtocol implements OtaProtocol {
     required void Function(int percent) onProgress,
   }) async {
     otaLogger.i('Starting Arduino OTA — chunk size (MTU): $mtuSize');
-    verboseTrace('Loaded firmware bytes: $firmware');
     otaLogger.d('Firmware length: ${firmware.length} bytes');
+    if (integrity.features.isNotEmpty) {
+      otaLogger.i('Integrity features: ${integrity.features}');
+    }
 
     final int firmwareByteLength = firmware.length;
     final int totalSegmentCount = (firmwareByteLength / firmwareSegmentSize)
@@ -79,6 +94,22 @@ class ArduinoOtaProtocol implements OtaProtocol {
             otaLogger.i('OTA update complete');
             _completeUpdate(true);
             return;
+          case arduinoHashMismatchOpcode:
+            final List<int>? expected = integrity.resolvedExpectedSha256;
+            final String transferredHex = sha256ToHex(sha256Of(firmware));
+            final String expectedHex = expected != null
+                ? sha256ToHex(expected)
+                : '(none configured)';
+            otaLogger.e(
+              'Device reported post-flash SHA-256 mismatch.\n'
+              '  Expected (sent to device): $expectedHex\n'
+              '  SHA-256 of bytes transferred by app: $transferredHex\n'
+              '  If those two differ → wrong expectedSha256 on the app/server.\n'
+              '  If they match → device hashed a different flash region/content '
+              '(or transfer corruption).',
+            );
+            _failUpdateWithException(DeviceHashMismatchException());
+            return;
           case 0xF2:
             otaLogger.i('New bin file installation begins on ESP32');
             return;
@@ -97,8 +128,8 @@ class ArduinoOtaProtocol implements OtaProtocol {
               return;
             }
 
-            final double progress = (segmentIndex / totalSegmentCount) * 100;
-            final int roundedProgress = progress.round();
+            final int roundedProgress =
+                ((segmentIndex / totalSegmentCount) * 100).round().clamp(0, 99);
             otaLogger.d(
               'Segment $segmentIndex/$totalSegmentCount — $roundedProgress%',
             );
@@ -111,6 +142,12 @@ class ArduinoOtaProtocol implements OtaProtocol {
               firmware,
               mtuSize,
               isCancelRequested,
+            );
+            await _sendPostTransferIntegrityIfNeeded(
+              transport,
+              firmware,
+              segmentIndex: segmentIndex,
+              totalSegmentCount: totalSegmentCount,
             );
             return;
           default:
@@ -132,6 +169,7 @@ class ArduinoOtaProtocol implements OtaProtocol {
     });
 
     try {
+      _postTransferIntegritySent = false;
       await _sendHandshake(
         transport,
         firmwareByteLength: firmwareByteLength,
@@ -139,6 +177,8 @@ class ArduinoOtaProtocol implements OtaProtocol {
         mtuSize: mtuSize,
       );
 
+      // Match ESP-IDF PostSHA: transfer the full image first, then send the
+      // expected digest (0xF9 / 0xFA) for device-side flash verification.
       const int initialSegmentIndex = 0;
       await _sendFirmwareSegment(
         transport,
@@ -146,6 +186,12 @@ class ArduinoOtaProtocol implements OtaProtocol {
         firmware,
         mtuSize,
         isCancelRequested,
+      );
+      await _sendPostTransferIntegrityIfNeeded(
+        transport,
+        firmware,
+        segmentIndex: initialSegmentIndex,
+        totalSegmentCount: totalSegmentCount,
       );
       onProgress(0);
       otaLogger.d(
@@ -160,10 +206,59 @@ class ArduinoOtaProtocol implements OtaProtocol {
     }
   }
 
+  /// After the last firmware segment, send `0xF9` / `0xFA` when
+  /// [IntegrityFeature.shaAfterFlash] is enabled (ESP-IDF-aligned timing).
+  Future<void> _sendPostTransferIntegrityIfNeeded(
+    OtaTransport transport,
+    Uint8List firmware, {
+    required int segmentIndex,
+    required int totalSegmentCount,
+  }) async {
+    if (_postTransferIntegritySent) return;
+    if (totalSegmentCount <= 0 || segmentIndex != totalSegmentCount - 1) {
+      return;
+    }
+    if (!integrity.verifyAfterFlash) return;
+
+    _postTransferIntegritySent = true;
+
+    int flags = 0;
+    flags |= integrityFlagShaAfterFlash;
+
+    final Uint8List flagsPacket = Uint8List.fromList([
+      arduinoIntegrityFlagsOpcode,
+      flags,
+    ]);
+    await transport.writeData(flagsPacket);
+    otaLogger.d('Sent integrity flags: 0x${flags.toRadixString(16)}');
+
+    final List<int> digest =
+        integrity.resolvedExpectedSha256 ?? sha256Of(firmware);
+    final String digestHex = sha256ToHex(digest);
+    otaLogger.i(
+      'SHA-256 to send to firmware after image (post-flash verify): $digestHex',
+    );
+    final Uint8List hashPacket = Uint8List(1 + sha256DigestSize)
+      ..[0] = arduinoExpectedHashOpcode;
+    hashPacket.setRange(1, 1 + sha256DigestSize, digest);
+    await transport.writeData(hashPacket);
+    otaLogger.d('Sent expected SHA-256 for post-flash verify: $digestHex');
+  }
+
   void _completeUpdate(bool succeeded) {
     final Completer<bool>? completer = _updateCompleter;
     if (completer != null && !completer.isCompleted) {
       completer.complete(succeeded);
+    }
+  }
+
+  /// Completes [performUpdate] with [error] so [OtaClient] can emit
+  /// [failedValue] and rethrow typed integrity failures to the caller.
+  void _failUpdateWithException(Object error) {
+    otaLogger.e('Arduino OTA failed', error: error);
+    final Completer<bool>? completer = _updateCompleter;
+    if (completer != null && !completer.isCompleted) {
+      completer.completeError(error);
     }
   }
 
@@ -214,10 +309,15 @@ class ArduinoOtaProtocol implements OtaProtocol {
         'BLE packet $packetIndex in segment $segmentIndex '
         '— overall $overallProgress%',
       );
+
       final Uint8List packet = Uint8List(payload.length + arduinoHeaderSize);
       packet[0] = 0xFB;
       packet[1] = packetIndex;
-      packet.setRange(arduinoHeaderSize, packet.length, payload);
+      packet.setRange(
+        arduinoHeaderSize,
+        arduinoHeaderSize + payload.length,
+        payload,
+      );
 
       verboseTrace(
         'Writing BLE packet, payload length is ${packet.length} '

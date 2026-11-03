@@ -1,10 +1,52 @@
 # Changelog
 
-All notable changes to the `flutter_ota` package are documented in this file.
+All notable changes to this project will be documented in this file.
 
-## [1.0.0] - 2026-06-08
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [Unreleased]
+
+## [1.0.0] - 2026-07-31
 
 ### Added
+
+- Optional `saveOtaLogs` parameter on `updateFirmware` (default `true`) to
+  capture the current OTA run’s log lines in memory for host-app debug UIs.
+  Oversized / firmware-payload dumps are never stored — status, handshake,
+  progress, and error lines only.
+- Exported session-log helpers: `otaSessionLogs`, `otaSessionLogText`,
+  `clearOtaSessionLogs`, and `otaLogCaptureEnabled`.
+- Example app: **Save OTA logs** toggle, **View OTA Logs** screen with
+  copy/clear, and route `/ota_logs`.
+- `validateFirmwareImage` / `isSupportedFirmwareImage` — pre-check that a path,
+  URL, or filename is `.bin` or `.img` before starting OTA.
+- `validateFirmwareSource` — for URLs, downloads then validates the payload
+  (rejects HTML; checks `.bin`/`.img` when a filename is known). Assets and
+  file picker still validate the path/name up front.
+- Shared `downloadAndValidateFirmware` / `validateFirmwarePayload` replace the
+  URL-only Google Drive HTML helper.
+- `UnsupportedFirmwareImageException` when the image type is not supported.
+- File picker restricted to `.bin` / `.img` (`FileType.custom`).
+- GitHub Actions CI workflow that runs `dart format`, `flutter analyze`, and
+  `flutter test` (package + example) on pushes and pull requests.
+- Optional, composable firmware integrity via `FirmwareIntegrityConfig` /
+  `IntegrityFeature`:
+  - `shaBeforeTransfer` — Flutter SHA-256 of the loaded binary vs a
+    server-provided digest before any BLE write.
+  - `shaAfterFlash` — expected digest sent to the device **after** the image
+    (ESP-IDF PostSHA: `SET_HASH`/`0x07` + 32 bytes, then `DONE`; Arduino:
+    `0xF9` flags + `0xFA` + 32 bytes after the last segment); success only
+    after post-flash verification (Arduino `0x0F` / ESP-IDF status `5`;
+    mismatch Arduino `0x0E` / ESP-IDF status `6`).
+- Features combine freely so firmware may support SHA-start only, SHA-end only,
+  both, or neither. Default remains no integrity (unchanged wire format).
+- Typed integrity exceptions: `FirmwareIntegrityException`,
+  `FirmwareHashMismatchException`, `DeviceHashMismatchException`.
+  Pre-transfer and device post-flash mismatches both emit `failedValue` on
+  `percentageStream` and then rethrow so callers can catch by type.
+- Unit tests for config validation, pre-transfer SHA, and protocol
+  integrity paths.
 - Typed exception hierarchy for OTA failures — `OtaException` (base),
   `EmptyFirmwareException`, and `FirmwareDownloadException` (which carries the
   HTTP `statusCode`) — so callers can handle errors by type instead of matching
@@ -30,6 +72,25 @@ All notable changes to the `flutter_ota` package are documented in this file.
   ESP-IDF and Arduino.
 
 ### Fixed
+
+- ESP-IDF transfer progress no longer reaches `100` before the device ACKs
+  FINISH (status `5`). Mid-transfer progress is capped at `99`; terminal `100`
+  is emitted only after a successful device acknowledgement. The example app
+  also treats success as `firmwareUpdate` after ACK, not progress alone.
+- URL firmware downloads that return HTML (e.g. a Google Drive `/view` share
+  page) are rejected with a clear error instead of being hashed as firmware.
+- `FirmwareDownloadException` and `EmptyFirmwareException` are rethrown after
+  emitting `failedValue`, so UIs can show the real failure reason (not only a
+  generic “OTA failed” toast).
+- `OtaClient.run()` now rejects concurrent calls with `OtaException` (same
+  re-entrancy guard as `Esp32OtaPackage.updateFirmware`), so custom
+  transport/protocol users cannot interleave writes on a shared transport.
+- `DeviceHashMismatchException` is now thrown (and rethrown by `OtaClient`
+  after `failedValue`) when the device reports a post-flash SHA-256 mismatch
+  (Arduino `0x0E` / ESP-IDF status `6`), matching pre-transfer
+  `FirmwareHashMismatchException` handling. Previously the exception was only
+  constructed for logging on the Arduino path, and the ESP-IDF path returned
+  `false` with no typed error.
 - Arduino updates now use the caller-supplied `mtuSize`. Previously it was
   ignored in favour of the device-negotiated MTU and hardcoded values (`200`,
   `400`), so the requested chunk size never reached the device.
@@ -49,6 +110,7 @@ All notable changes to the `flutter_ota` package are documented in this file.
   before indexing `value[0]`.
 
 ### Changed
+
 - Refactored the OTA API to use the `UpdateType` and `FirmwareType` enums in
   place of integer codes.
 - Firmware loaders now throw the typed exceptions above instead of plain
@@ -62,6 +124,7 @@ All notable changes to the `flutter_ota` package are documented in this file.
   `mtuSize` before writing, catching internal chunk/handshake mismatches early.
 
 ### Removed
+
 - The unused `service` and UUID parameters from `updateFirmware`.
 - Unused helper methods (`getFirmware`, `uint8ListToIntList`) from
   `Esp32OtaPackage`.
@@ -70,10 +133,17 @@ All notable changes to the `flutter_ota` package are documented in this file.
 
 ## [0.1.15] - 2024-04-18
 
+### Changed
+
 - Updated dependencies to the latest versions.
 
 ## [0.0.5] - 2023-08-08
 
 ### Added
+
 - First public release of the `flutter_ota` package on pub.dev.
 - Firmware update over Bluetooth Low Energy (BLE) for ESP32.
+
+[1.0.0]: https://github.com/sparkleo-io/flutter_ota/compare/v0.1.15...v1.0.0
+[0.1.15]: https://github.com/sparkleo-io/flutter_ota/compare/v0.0.5...v0.1.15
+[0.0.5]: https://github.com/sparkleo-io/flutter_ota/releases/tag/v0.0.5

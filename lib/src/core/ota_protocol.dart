@@ -15,6 +15,10 @@ abstract class OtaProtocol {
   /// Runs the full firmware transfer over [transport].
   ///
   /// Returns `true` when the device acknowledges a successful update.
+  /// Returns `false` for generic transfer failures.
+  ///
+  /// Throws `DeviceHashMismatchException` when the device reports a post-flash
+  /// SHA-256 mismatch so the client can rethrow it after emitting `failedValue`.
   Future<bool> performUpdate({
     required OtaTransport transport,
     required Uint8List firmware,

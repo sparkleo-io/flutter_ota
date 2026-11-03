@@ -1,5 +1,6 @@
-import 'package:get/get_navigation/src/routes/get_route.dart';
-import 'package:get/get_navigation/src/routes/transitions_type.dart';
+import 'package:get/get.dart';
+import 'package:ota_new_protocol/features/scanningAndConnection/presentation/controller/ota_update_controller.dart';
+import 'package:ota_new_protocol/features/scanningAndConnection/presentation/view/ota_logger_page.dart';
 import 'package:ota_new_protocol/features/scanningAndConnection/presentation/view/ota_update_page.dart';
 
 import '../features/scanningAndConnection/presentation/view/scanning_page_view.dart';
@@ -25,34 +26,17 @@ class RoutePages {
     GetPage(
       name: AppRoutes.newOtaUpdate,
       page: () => const NewOTAUpdatePage(),
-      transition: Transition.fadeIn,
-      transitionDuration: const Duration(milliseconds: 500),
-    ),
-
-    /*GetPage(
-      name: AppRoutes.connecting,
-      page: () => ConnectingPage(),
+      binding: BindingsBuilder(() {
+        Get.put(OtaUpdateController());
+      }),
       transition: Transition.fadeIn,
       transitionDuration: const Duration(milliseconds: 500),
     ),
     GetPage(
-      name: AppRoutes.scanningPage,
-      page: () => Scanning(),
+      name: AppRoutes.otaLogs,
+      page: () => const OtaLoggerPage(),
       transition: Transition.fadeIn,
-      transitionDuration: const Duration(milliseconds: 500),
+      transitionDuration: const Duration(milliseconds: 300),
     ),
-    GetPage(
-      name: AppRoutes.otaUpdate,
-      page: () => OtaUpdatePage(),
-      transition: Transition.fadeIn,
-      transitionDuration: const Duration(milliseconds: 500),
-    ),
-
-    GetPage(name: AppRoutes.leoEmptyScreenView, page: () => const LeoEmptyScreen()),
-    GetPage(name: AppRoutes.navBarView, page: () => BottomNavBarView()),
-    GetPage(name: AppRoutes.addNewLeoDevice, page: () => const AddNewLeoDevice()),
-    GetPage(name: AppRoutes.addedLeoDeviceDetails, page: () => const AddedLeoDetailsView()),
-    GetPage(name: AppRoutes.setChargeLimitView, page: () => const SetChargeLimitView()),
-    GetPage(name: AppRoutes.feedbackView, page: () => const FeedbackView()),*/
   ];
 }

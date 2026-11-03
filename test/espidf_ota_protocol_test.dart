@@ -39,7 +39,9 @@ void main() {
       ]);
       // Control channel: begin (1) then finish (4).
       expect(transport.controlWrites.map((c) => c.first), <int>[1, 4]);
-      expect(progress.last, 100);
+      // Transfer progress caps at 99; terminal 100 comes from OtaClient after ACK.
+      expect(progress.last, 99);
+      expect(progress.every((p) => p < 100), isTrue);
     });
 
     test('returns false on an unexpected final status', () async {

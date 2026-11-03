@@ -10,7 +10,11 @@ class OTANewApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return GetMaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'OTA New App',
+      title: 'Flutter OTA Example',
+      theme: ThemeData(
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
+        useMaterial3: true,
+      ),
       locale: const Locale('en'),
       fallbackLocale: const Locale('en'),
       initialRoute: RoutePages.initial,

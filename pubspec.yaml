@@ -1,7 +1,24 @@
 name: flutter_ota
-description: A Flutter package for OTA updating firmware of ESP32 using Bluetooth Low Energy (BLE).
+description: Ship firmware without a cable — OTA updates for ESP32-class BLE devices (ESP-IDF/Arduino). MQTT and Wi-Fi HTTP/HTTPS support are planned.
 version: 1.0.0
-homepage: https://github.com/sparkleo-io/flutter_ota.git
+homepage: https://github.com/sparkleo-io/flutter_ota
+repository: https://github.com/sparkleo-io/flutter_ota
+issue_tracker: https://github.com/sparkleo-io/flutter_ota/issues
+topics:
+  - bluetooth
+  - ble
+  - ota
+  - iot
+  - esp32
+screenshots:
+  - description: Example home screen to start BLE scanning for ESP32 OTA targets.
+    path: screenshots/home_screen.jpeg
+  - description: Example BLE device scan screen showing nearby ESP32 targets for OTA.
+    path: screenshots/scanning_screen.jpeg
+  - description: Example OTA transfer progress with firmware size and integrity checks.
+    path: screenshots/progress_screen.jpeg
+  - description: Example OTA session logs screen with captured package log lines.
+    path: screenshots/logging_screen.jpeg
 
 environment:
   sdk: '>=3.8.0 <4.0.0'
@@ -10,6 +27,7 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  crypto: ^3.0.6
   flutter_blue_plus: ^2.3.8
   file_picker: ^11.0.2
   http: ^1.2.0
@@ -26,5 +44,3 @@ dev_dependencies:
 # The following section is specific to Flutter packages.
 flutter:
   uses-material-design: true
-  # assets:
-  #   - assets/

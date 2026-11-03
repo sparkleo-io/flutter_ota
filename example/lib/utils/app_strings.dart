@@ -30,27 +30,3 @@ abstract class UUIDs {
   static const String serviceUuid = "0000ffe0-0000-0000-0000-000000000000";
   static const String repsUuid = "0000ffe1-0000-0000-0000-000000000000";
 }
-
-abstract class PngAssetsText {
-  static const String gun = "assets/pngs/gun.png";
-  static const String manWithGun = "assets/pngs/man_with_gun.png";
-  static const String pistolNavbar = "assets/pngs/pistol_navbar.png";
-  static const String liionSplashScreen = "assets/pngs/liion_splash-screen.png";
-  static const String liionMainLogo = "assets/pngs/leo_main_logo.png";
-  static const String liionAddedDeviceImage =
-      "assets/pngs/leo_card-top-half.png";
-  static const String liionIllustration = "assets/pngs/leo_illustration.png";
-}
-
-abstract class SvgAssetsText {
-  static const String backArrow = "assets/svgs/back_arrow.svg";
-  static const String leoBatteryIcon = "assets/svgs/leo_battery_icon.svg";
-  static const String leoHomeIcon = "assets/svgs/leo_home_icon.svg";
-  static const String leoSettingIcon = "assets/svgs/leo_settings_icon.svg";
-  static const String leoAddedDeviceImage = "assets/svgs/leo_card-top-half.svg";
-  static const String leoChargingIcon = "assets/svgs/leo_charging_icon.svg";
-  static const String leoChargingIconBlue =
-      "assets/svgs/leo_charging_icon_blue.svg";
-  static const String leoGraphTimeLine =
-      "assets/svgs/leo_graph_time_line_vector.svg";
-}

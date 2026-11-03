@@ -36,15 +36,10 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Flutter OTA Example',
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
-        useMaterial3: true,
-      ),
-      home: const OTANewApp(),
-    );
+    // Use GetMaterialApp as the single root navigator. Nesting MaterialApp
+    // above it makes Get.dialog push on the outer navigator while Get.back()
+    // pops the inner GetX route, leaving dialogs stuck open.
+    return const OTANewApp();
   }
 }
 

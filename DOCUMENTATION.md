@@ -8,6 +8,8 @@ ESP32 devices over **Bluetooth Low Energy (BLE)**.
 - **Repository:** https://github.com/sparkleo-io/flutter_ota
 - **Publisher:** sparkleo.io
 - **SDK requirements:** Dart `>=3.8.0 <4.0.0`, Flutter `>=3.32.0`
+- **Also see:** [MIGRATION.md](MIGRATION.md) (0.x → 1.0.0), [FAQ.md](FAQ.md),
+  [CONTRIBUTING.md](CONTRIBUTING.md)
 
 ---
 
@@ -16,9 +18,8 @@ ESP32 devices over **Bluetooth Low Energy (BLE)**.
 1. [What is this package & why it exists](#1-what-is-this-package--why-it-exists)
 2. [Main features](#2-main-features)
 3. [How to use it](#3-how-to-use-it)
-4. [Current package scoring](#4-current-package-scoring)
+4. [Protocol handshake sequences](#4-protocol-handshake-sequences)
 5. [Changelog — what's new in 1.0.0](#5-changelog--whats-new-in-100)
-6. [Future plan](#6-future-plan)
 
 ---
 
@@ -71,9 +72,17 @@ await otaPackage.updateFirmware(
 The firmware binary can come from three different places, selected via the
 `FirmwareType` enum:
 
-```33:43:lib/ota_package.dart
+```1:7:lib/src/models/update_type.dart
+/// The type of update protocol used to flash the firmware.
+///
+/// * [UpdateType.espidf]: Firmware update following the ESP-IDF/Espressif
+///   framework (formerly represented by the integer `1`).
+/// * [UpdateType.arduino]: Firmware update based on the Arduino framework for
+///   ESP32 (formerly represented by the integer `2`).
 enum UpdateType { espidf, arduino }
+```
 
+```1:9:lib/src/models/firmware_type.dart
 /// The source from which the firmware binary is loaded.
 ///
 /// * [FirmwareType.assets]: Load the firmware from the app's bundled assets
@@ -93,12 +102,39 @@ enum FirmwareType { assets, filepicker, url }
 
 The package supports both major ESP32 firmware types — ESP-IDF and Arduino — with an easy-to-use `updateFirmware` method that works for either.
 
+### Optional firmware integrity verification
+
+Pass a `FirmwareIntegrityConfig` to `updateFirmware` to enable any combination
+of checks your device (and server) support. Default is none — wire format is
+unchanged for existing firmware.
+
+| Feature | Role |
+| --- | --- |
+| `shaBeforeTransfer` | App SHA-256 vs server digest before BLE |
+| `shaAfterFlash` | Device verifies flash SHA-256 before success/reboot |
+
+```dart
+await otaPackage.updateFirmware(
+  device,
+  UpdateType.arduino,
+  FirmwareType.url,
+  uri: firmwareUrl,
+  integrity: FirmwareIntegrityConfig(
+    features: {
+      IntegrityFeature.shaBeforeTransfer,
+      IntegrityFeature.shaAfterFlash,
+    },
+    expectedSha256Hex: serverSha256Hex,
+  ),
+);
+```
+
 ### Real-time progress stream
 
 `percentageStream` emits the update progress (0–100) so the UI can show a
 progress bar live:
 
-```70:77:lib/ota_package.dart
+```42:49:lib/src/models/ota_package.dart
   /// Stream to provide progress percentage.
   ///
   /// When an update is cancelled via [cancelUpdate], a value of [cancelledValue]
@@ -112,7 +148,7 @@ progress bar live:
 Two sentinel values let listeners distinguish terminal outcomes without
 try/catch noise in the UI:
 
-```108:114:lib/ota_package.dart
+```1:7:lib/src/models/constants.dart
 /// Value emitted on [OtaPackage.percentageStream] when an update is cancelled.
 const int cancelledValue = -1;
 
@@ -125,28 +161,33 @@ const int failedValue = -2;
 ### Configurable, protocol-aware chunk size (`mtuSize`)
 
 You can tune the number of firmware bytes sent per BLE packet. The value is
-validated **up front** against the BLE single-write limit (512 bytes), with the
-Arduino path reserving 2 bytes for its header — so a bad value throws *before*
-any data is sent instead of failing mid-transfer:
+validated **up front** against each protocol's max write size (BLE single-write
+limit of 512 bytes, with Arduino reserving header/CRC overhead) — so a bad
+value throws *before* any data is sent instead of failing mid-transfer:
 
-```598:606:lib/ota_package.dart
-    final int maxChunkSize = updateType == UpdateType.arduino
-        ? maxMtuSize - arduinoHeaderSize
-        : maxMtuSize;
-    if (mtuSize < 1 || mtuSize > maxChunkSize) {
-      throw OtaException(
-        'mtuSize must be between 1 and $maxChunkSize bytes for '
-        '${updateType.name} (got $mtuSize).',
-      );
-    }
+```104:110:lib/src/esp32_ota_package.dart
+      final OtaProtocol protocol = _protocolFor(updateType, integrity);
+      if (mtuSize < 1 || mtuSize > protocol.maxWriteSize) {
+        throw OtaException(
+          'mtuSize must be between 1 and ${protocol.maxWriteSize} bytes for '
+          '${updateType.name} (got $mtuSize).',
+        );
+      }
 ```
+
+### Session log capture (`saveOtaLogs`)
+
+`updateFirmware` accepts `saveOtaLogs` (default `true`). When enabled, the run’s
+log lines are stored in memory and exposed as `otaSessionLogs` /
+`otaSessionLogText` so host apps can build a logger screen without scraping the
+console. Details: [Structured logging and session log capture](#structured-logging-and-session-log-capture).
 
 ### Typed error hierarchy
 
 Setup/loading failures are reported as typed exceptions so callers can branch on
 the failure type instead of parsing strings:
 
-```137:172:lib/ota_package.dart
+```6:41:lib/src/exceptions/ota_exceptions.dart
 class OtaException implements Exception {
   OtaException(this.message, [this.cause]);
 
@@ -190,12 +231,11 @@ class FirmwareDownloadException extends OtaException {
 Before any BLE handshake or write, the package aborts if the firmware is empty,
 so the device is never left mid-update with nothing to flash:
 
-```635:639:lib/ota_package.dart
-        /// Fail early on empty firmware: do NOT start the OTA handshake/writes,
-        /// otherwise the device is left mid-update with nothing to flash.
-        if (binaryChunks.isEmpty) {
-          throw EmptyFirmwareException();
-        }
+```75:78:lib/src/core/ota_client.dart
+      final Uint8List firmware = await _source.load();
+      if (firmware.isEmpty) {
+        throw EmptyFirmwareException();
+      }
 ```
 
 ### Crash-safe handling of BLE failures
@@ -204,15 +244,15 @@ If the device disconnects mid-transfer or a write fails with a GATT error, the
 package reports it on the stream (`failedValue`) instead of letting the exception
 propagate and crash the app:
 
-```287:296:lib/ota_package.dart
+```153:161:lib/src/core/ota_client.dart
   void _handleUpdateError(Object error) {
-    _logger.e(
+    otaLogger.e(
       'OTA update aborted: Device either returned an error or did not acknowledge the operation. '
       'Some devices may not support acknowledgement.'
       'Please ensure the device firmware supports proper OTA acknowledgement flow.',
     );
-    _logger.e('OTA update aborted', error: error);
-    firmwareUpdate = false;
+    otaLogger.e('OTA update aborted', error: error);
+    _firmwareUpdateSucceeded = false;
     _completeUpdate(_cancelRequested ? cancelledValue : failedValue);
   }
 ```
@@ -222,14 +262,13 @@ propagate and crash the app:
 An in-progress update can be cancelled; the package stops sending data and emits
 `cancelledValue`:
 
-```226:234:lib/ota_package.dart
-  @override
-  Future<void> cancelUpdate() async {
+```125:132:lib/src/core/ota_client.dart
+  /// Requests cancellation of an in-progress OTA update.
+  Future<void> cancel() async {
     if (!_isUpdating) return;
-    _logger.w('OTA update cancellation requested');
+    otaLogger.w('OTA update cancellation requested');
     _cancelRequested = true;
-    await subscription?.cancel();
-    subscription = null;
+    await _protocol.cancel();
     _completeUpdate(cancelledValue);
   }
 ```
@@ -237,26 +276,54 @@ An in-progress update can be cancelled; the package stops sending data and emits
 ### Self-disposing / leak-safe
 
 When an update reaches a terminal state (success, failure, or cancel) the
-package cleans up its own subscription and stream — no dependency on a widget
-lifecycle, so the user can navigate freely while the update runs:
+package cleans up its own stream — no dependency on a widget lifecycle, so the
+user can navigate freely while the update runs:
 
-```269:278:lib/ota_package.dart
+```146:151:lib/src/core/ota_client.dart
   void _completeUpdate(int value) {
     if (_percentageController.isClosed) return;
     _isUpdating = false;
-    // Emit the terminal value first so listeners receive it before the
-    // stream's done event, then close.
     _percentageController.add(value);
-    subscription?.cancel();
-    subscription = null;
     _percentageController.close();
   }
 ```
 
-### Structured logging
+### Structured logging and session log capture
 
-Uses the `logger` package with a colorized `PrettyPrinter`, and suppresses output
-in release builds, replacing raw `print` calls.
+Uses the `logger` package with a colorized `PrettyPrinter` on the console.
+Console output is suppressed in release builds unless session capture is on;
+raw `print` calls are not used.
+
+Pass `saveOtaLogs: true` (the default) to `updateFirmware` to also store plain
+log lines in memory for the duration of that run. Read them after (or during)
+the update for an in-app logger screen. Capture never stores raw firmware
+payloads — only status / handshake / progress / error lines (oversized dumps
+are dropped automatically).
+
+```dart
+await otaPackage.updateFirmware(
+  device,
+  UpdateType.espidf,
+  FirmwareType.url,
+  uri: firmwareUrl,
+  saveOtaLogs: true, // default
+);
+
+// e.g. display in a ScrollView / SelectableText
+print(otaSessionLogText);
+clearOtaSessionLogs();
+```
+
+| API | Role |
+| --- | --- |
+| `saveOtaLogs` | Named `updateFirmware` flag (default `true`) — clear + capture for this run |
+| `otaSessionLogs` / `otaSessionLogText` | In-memory lines for UI or share/copy |
+| `clearOtaSessionLogs` | Wipe the buffer |
+| `otaLogCaptureEnabled` | Whether capture is currently active |
+| `otaVerboseLogging` | Extra packet/progress traces (default `false`; noisy; never dumps firmware binaries) |
+
+The example app shows a **Save OTA logs** switch and a **View OTA Logs** screen
+when capture is enabled. See [example/README.md](example/README.md).
 
 ---
 
@@ -315,7 +382,7 @@ Request the runtime permissions before starting an update.
 ### Step 3 — Import
 
 ```dart
-import 'package:flutter_ota/ota_package.dart';
+import 'package:flutter_ota/flutter_ota.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 ```
 
@@ -420,6 +487,7 @@ await otaPackage.updateFirmware(
   FirmwareType.assets,
   uri: 'assets/firmware.bin',
   mtuSize: 500, // optional, default 500
+  saveOtaLogs: true, // optional, default true — capture logs for a debug UI
 );
 
 // Arduino — firmware downloaded from a URL
@@ -440,13 +508,15 @@ await otaPackage.updateFirmware(
 
 The method signature and the meaning of each parameter:
 
-```59:65:lib/ota_package.dart
+```30:38:lib/src/models/ota_package.dart
   Future<void> updateFirmware(
     BluetoothDevice device,
     UpdateType updateType,
     FirmwareType firmwareType, {
     String? uri,
     int mtuSize,
+    FirmwareIntegrityConfig integrity,
+    bool saveOtaLogs,
   });
 ```
 
@@ -457,11 +527,15 @@ The method signature and the meaning of each parameter:
 | `firmwareType` | Yes | Source of the binary: `assets`, `filepicker`, or `url`. |
 | `uri` | All except `filepicker` | Asset path or URL of the `.bin`. |
 | `mtuSize` | Optional (default `500`) | Bytes per BLE packet. 1–512 for ESP-IDF, 1–510 for Arduino. |
+| `integrity` | Optional (default none) | Composable SHA-256 features; enable only what firmware supports. |
+| `saveOtaLogs` | Optional (default `true`) | Capture this run’s logs in memory (`otaSessionLogs`). See [Structured logging](#structured-logging-and-session-log-capture). |
 
-### Step 8 — Handle setup/loading errors
+### Step 8 — Handle setup / integrity errors
 
-Wrap the call in a `try/catch` to handle setup-time failures (these are thrown,
-unlike mid-transfer BLE errors which arrive on the stream):
+Wrap the call in a `try/catch` for setup failures and integrity mismatches
+(these are thrown; mid-transfer BLE drops still arrive only on the stream as
+`failedValue`). Post-flash device hash failures emit `failedValue` **and**
+rethrow `DeviceHashMismatchException`:
 
 ```dart
 try {
@@ -473,6 +547,10 @@ try {
   );
 } on EmptyFirmwareException catch (e) {
   print(e.message); // empty file / empty download / nothing picked
+} on FirmwareHashMismatchException catch (e) {
+  print(e.message); // app-side pre-transfer SHA mismatch
+} on DeviceHashMismatchException catch (e) {
+  print(e.message); // device post-flash SHA mismatch
 } on FirmwareDownloadException catch (e) {
   print('Download failed (${e.statusCode}): ${e.message}');
 } on OtaException catch (e) {
@@ -512,54 +590,103 @@ await otaPackage.dispose();
 
 ---
 
-## 4. Current package scoring
+## 4. Protocol handshake sequences
 
-The package is published on **pub.dev** under the `sparkleo.io` publisher. The
-following reflects the most recently analyzed published release (**0.1.15**),
-which the `1.0.0` release builds on:
+Both paths assume the phone is already connected and has discovered the OTA
+**notify** and **write** characteristics (ESP-IDF also uses a separate
+**control** characteristic for begin/finish/status). Optional integrity steps
+appear as `opt` blocks — they run only when `FirmwareIntegrityConfig` enables
+them.
 
-| Metric | Value |
-| --- | --- |
-| **Pub points** | **135 / 160** |
-| **Likes** | 22 |
-| **Downloads** | ~101 |
-| **License** | BSD-3-Clause |
-| **Platforms** | Android, iOS, Linux, macOS (Web & Windows not supported) |
+### ESP-IDF (`UpdateType.espidf`)
 
-### Pub points breakdown (135 / 160)
+Phone writes a little-endian MTU size on the **data** characteristic, then
+drives the session with **control** opcodes (`1` begin, `7` set-hash, `4`
+finish). The device answers on control with status bytes (`2` ACK, `5`
+success, `6` hash mismatch).
 
-| Category | Score | Notes |
-| --- | --- | --- |
-| Follow Dart file conventions | 25 / 30 | Lost 5 points: `CHANGELOG.md` did not reference the current version. |
-| Provide documentation | 20 / 20 | 62.5% of the public API has dartdoc comments; an example is included. |
-| Platform support | 20 / 20 | Supports 4 of 6 platforms. |
-| Pass static analysis | 40 / 50 | Lost 10 points: a lint/formatting issue (`List<int>` angle brackets in a doc comment interpreted as HTML). |
-| Support up-to-date dependencies | 30 / 40 | Lost 10 points: outdated constraints on `file_picker` and `flutter_blue_plus`. |
+```mermaid
+sequenceDiagram
+  participant App as Flutter app
+  participant Data as Data characteristic
+  participant Ctrl as Control characteristic
 
-### How 1.0.0 addresses the gaps
+  App->>Data: MTU size (2 bytes, little-endian)
+  App->>Ctrl: BEGIN (0x01)
+  Ctrl-->>App: ACK (0x02) or NAK (0x03)
 
-The `1.0.0` release directly targets the categories where points were lost:
+  loop Each firmware chunk ≤ mtuSize
+    App->>Data: Firmware chunk
+  end
 
-- **CHANGELOG (+5 potential):** `CHANGELOG.md` now contains a full, dated `1.0.0`
-  entry referencing the current version.
-- **Dependencies (+10 potential):** `pubspec.yaml` upgrades to current major
-  versions — `flutter_blue_plus: ^2.3.8`, `file_picker: ^11.0.2`,
-  `http: ^1.2.0`, plus a new `logger: ^2.7.0`.
-- **Static analysis (+10 potential):** `print` statements were replaced with
-  structured logging and the API was cleaned up, reducing analysis findings.
+  opt shaAfterFlash enabled
+    App->>Ctrl: SET_HASH (0x07)
+    App->>Data: Expected SHA-256 (32 bytes)
+    Ctrl-->>App: ACK (0x02)
+  end
 
-> Note: pub.dev recomputes the score after a new version is analyzed, so the
-> exact `1.0.0` figure will be confirmed once it is published and re-scored.
+  App->>Ctrl: FINISH (0x04)
+  Ctrl-->>App: SUCCESS (0x05) or HASH_MISMATCH (0x06)
+```
+
+### Arduino (`UpdateType.arduino`)
+
+Phone starts with a three-packet handshake on the **write** characteristic
+(`0xFD` / `0xFE` / `0xFF`), then streams **16 KB segments** as `0xFB` BLE
+packets ending in a `0xFC` marker. The device requests the next segment with
+`0xF1` on notify. When `shaAfterFlash` is enabled, the app sends `0xF9` /
+`0xFA` **after** the last segment (same timing as ESP-IDF PostSHA), then the
+device finishes with `0x0F` (or `0x0E` on hash mismatch).
+
+```mermaid
+sequenceDiagram
+  participant App as Flutter app
+  participant Write as Write characteristic
+  participant Notify as Notify characteristic
+
+  App->>Write: 0xFD (start OTA)
+  App->>Write: 0xFE + file size (4 bytes, big-endian)
+  App->>Write: 0xFF + segment count (2) + mtuSize (2)
+
+  App->>Write: Segment 0 — N× (0xFB + index + payload)
+  App->>Write: 0xFC + segment length + segment index
+
+  loop Until all segments delivered
+    Notify-->>App: 0xF1 + next segment index (2 bytes)
+    App->>Write: Segment i — N× (0xFB + index + payload)
+    App->>Write: 0xFC + segment length + segment index
+  end
+
+  opt shaAfterFlash enabled
+    App->>Write: 0xF9 + integrity flags
+    App->>Write: 0xFA + expected SHA-256 (32 bytes)
+  end
+
+  opt Device starting install
+    Notify-->>App: 0xF2 (install begins)
+  end
+
+  alt Success
+    Notify-->>App: 0x0F (OTA complete)
+  else Post-flash hash mismatch
+    Notify-->>App: 0x0E (hash mismatch)
+  end
+```
 
 ---
 
 ## 5. Changelog — what's new in 1.0.0
 
-`1.0.0` (2026-06-08) is a substantial release focused on **type safety, correct
+`1.0.0` (2026-07-31) is a substantial release focused on **type safety, correct
 chunking, resource management, and a cleaner API**.
 
 ### Added
 
+- Optional, composable firmware integrity (`FirmwareIntegrityConfig` /
+  `IntegrityFeature`): SHA-256 before transfer and post-flash SHA-256
+  (ESP-IDF PostSHA uses `SET_HASH` `0x07`). Features combine independently so
+  devices may support any subset (or none).
+- Integrity exception types for hash failures.
 - **Typed exception hierarchy** — `OtaException` (base),
   `EmptyFirmwareException`, and `FirmwareDownloadException` (carrying the HTTP
   `statusCode`) — so callers handle errors by type instead of matching raw
@@ -577,6 +704,10 @@ chunking, resource management, and a cleaner API**.
   protocol-aware validation — out-of-range values throw `OtaException` before any
   BLE write instead of failing mid-transfer.
 - **Structured `logger`-based logging**, replacing `print`.
+- **Session log capture** via optional `saveOtaLogs` on `updateFirmware`
+  (default `true`), plus `otaSessionLogs` / `otaSessionLogText` /
+  `clearOtaSessionLogs` for in-app debug UIs. Firmware payloads are never
+  stored in the session buffer.
 
 ### Fixed
 
@@ -619,44 +750,3 @@ chunking, resource management, and a cleaner API**.
 | Empty firmware could leave the device mid-update. | Early-fail guard aborts before any write. |
 | Manual cleanup required. | Self-disposing + explicit `dispose()`. |
 | `print`-based logging shipped to production. | Structured `logger`, suppressed in release builds. |
-
----
-
-## 6. Future plan
-
-Planned directions to keep raising both the capability and the pub.dev score:
-
-### Reliability & protocol
-
-- **Automatic recovery after cancel/disconnect** — manage the disconnect →
-  reconnect → re-discover cycle internally so a fresh OTA can start without the
-  caller manually rebuilding the connection.
-- **Retry & resume** — retry failed packets and, where the device firmware
-  supports it, resume an interrupted transfer instead of restarting from zero.
-- **Firmware integrity checks** — optional checksum/CRC or signature
-  verification of the binary before and after transfer.
-
-### API & developer experience
-
-- **Richer progress events** — a structured progress/state object (bytes sent,
-  total bytes, current phase) alongside the simple percentage.
-- **Helper for characteristic discovery** — a utility to locate the OTA service
-  and notify/write characteristics, reducing the boilerplate currently shown in
-  the example.
-- **Higher test coverage** — unit tests over the chunking, validation, and
-  protocol state machine using mocked BLE characteristics.
-
-### Ecosystem & scoring
-
-- **Keep dependencies current** — track `flutter_blue_plus`, `file_picker`, and
-  `http` major releases to retain the up-to-date-dependencies points.
-- **Close the remaining static-analysis gap** — eliminate the documentation/lint
-  finding to recover the last analysis points.
-- **Broaden platform support** — evaluate options for Web/Windows where the
-  underlying BLE and file-picker stacks allow.
-- **Expand documentation** — more end-to-end recipes (ESP-IDF vs Arduino
-  firmware setup) and troubleshooting guidance for common GATT errors.
-
----
-
-*Generated for `flutter_ota` v1.0.0.*

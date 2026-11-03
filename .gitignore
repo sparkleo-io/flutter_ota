@@ -10,6 +10,9 @@
 .svn/
 migrate_working_dir/
 
+# Android — machine-local SDK paths (do not commit)
+**/local.properties
+
 # IntelliJ related
 *.iml
 *.ipr
@@ -30,3 +33,8 @@ migrate_working_dir/
 .flutter-plugins-dependencies
 .packages
 build/
+
+# Internal review / AI artifacts (never commit or publish)
+code_review.html
+*_report.html
+deep_pr_review*.html
